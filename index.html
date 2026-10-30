@@ -6,7 +6,8 @@
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script defer src="config.js"></script>
 <style>
-.top{border-radius:0 0 18px 18px}
+.top{margin:10px 12px 0;border-radius:18px;border:0;width:auto;box-sizing:border-box}
+#dback{position:fixed;inset:0;background:#231B3A40;z-index:19;display:none}#dback.open{display:block}
 .pg{display:inline-flex;align-items:center;gap:10px}
 .pgrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
 .pgrow p{margin:0}
@@ -39,10 +40,17 @@
 </style></head><body>
 <header class="top"><b>Dance UP Studio</b><nav id="nav"></nav></header>
 <main class="page" id="v"></main>
-<aside id="drawer" aria-label="Карточка"></aside><div id="toast"></div><div id="modal"></div><div id="inv"></div>
+<div id="dback" onclick="S.drawer=null;drawer()"></div><aside id="drawer" aria-label="Карточка"></aside><div id="toast"></div><div id="modal"></div><div id="inv"></div>
 <script>
 /* ===== данные (загружаются из Supabase) ===== */
 let T=[],G=[],P=[],K=[],EN=[],A={};
+let AX=null,ATT_OK=false,ATT_ERR=false,KI={},GI={};
+function axB(){const kg=new Map(),bk=new Map();for(const key in A){const [k,g,d]=key.split('|'),id=k+'|'+g;let m=kg.get(id);if(!m){m=new Map();kg.set(id,m)}m.set(d,A[key]);let s=bk.get(+k);if(!s){s=new Set();bk.set(+k,s)}s.add(+g)}AX={kg,bk}}
+const getAX=()=>{if(!AX)axB();return AX};
+function setA(key,v){if(v===undefined)delete A[key];else A[key]=v;if(!AX)return;const [k,g,d]=key.split('|'),id=k+'|'+g;let m=AX.kg.get(id);
+if(v===undefined){if(m){m.delete(d);if(!m.size){AX.kg.delete(id);const s=AX.bk.get(+k);if(s)s.delete(+g)}}return}
+if(!m){m=new Map();AX.kg.set(id,m)}m.set(d,v);let s=AX.bk.get(+k);if(!s){s=new Set();AX.bk.set(+k,s)}s.add(+g)}
+const attWait=()=>'<section class="card"><p class="muted">'+(ATT_ERR?'Не удалось загрузить посещаемость. Обновите страницу.':'Загружаем посещаемость…')+'</p></section>';
 let TU={},GU={},PU={},KU={},EU={},LS={},ME=null;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -182,28 +190,28 @@ const {error}=await sb.from('enrollments').update({status:'left'}).eq('id',e.u);
 async function delGroup(gid){const n=activeIn(gid).length;if(!confirm('Удалить группу «'+gn(gid)+'» навсегда? Будут удалены записи учеников в эту группу ('+rowsOf(gid).length+'), отметки посещаемости и цены группы. Сами ученики останутся. Отменить нельзя.'))return;
 let r=await sb.from('enrollments').delete().eq('group_id',GU[gid]);if(r.error)return toast('Не удалено: '+r.error.message);
 r=await sb.from('groups').delete().eq('id',GU[gid]);if(r.error)return toast('Не удалено: '+r.error.message);
-G=G.filter(x=>x.id!=gid);EN=EN.filter(e=>e.g!=gid);Object.keys(A).forEach(x=>{if(x.split('|')[1]==gid)delete A[x]});S.g=null;S.gv='kids';draw();toast('Группа удалена')}
+G=G.filter(x=>x.id!=gid);EN=EN.filter(e=>e.g!=gid);Object.keys(A).forEach(x=>{if(x.split('|')[1]==gid)delete A[x]});AX=null;S.g=null;S.gv='kids';draw();toast('Группа удалена')}
 
 /* ===== посещаемость внутри группы ===== */
-async function saveAtt(g,list){const d=S.ad,prev={};list.forEach(([k,v])=>{const key=k+'|'+g+'|'+d;prev[key]=A[key];A[key]=v});draw();
+async function saveAtt(g,list){const d=S.ad,prev={};list.forEach(([k,v])=>{const key=k+'|'+g+'|'+d;prev[key]=A[key];setA(key,v)});draw();
 try{let l=LS[g+'|'+d];if(!l){const {data,error}=await sb.from('lessons').upsert({group_id:GU[g],lesson_date:d},{onConflict:'group_id,lesson_date'}).select('id').single();if(error)throw error;l=LS[g+'|'+d]=data.id}
 const {error}=await sb.from('attendance').upsert(list.map(([k,v])=>({lesson_id:l,enrollment_id:EU[k+'|'+g],present:!!v})));if(error)throw error}
-catch(e){toast('Не сохранено: '+e.message);for(const key in prev){if(prev[key]===undefined)delete A[key];else A[key]=prev[key]}draw()}}
+catch(e){toast('Не сохранено: '+e.message);for(const key in prev)setA(key,prev[key]);draw()}}
 const mark=(k,g,v)=>saveAtt(g,[[k,v]]);
 const markAll=(g,v)=>saveAtt(g,activeIn(g).map(e=>[e.k,v]));
-function monthStat(k,g,m){const ds=Object.keys(A).filter(x=>{const [a,b,c]=x.split('|');return a==k&&b==g&&c.startsWith(m)&&A[x]===1}).map(x=>x.split('|')[2]);return [ds.length,+ds.reduce((s,d)=>s+priceOn(g,d),0).toFixed(2)]}
-function attPage(gid){const es=activeIn(gid),m=S.ad.slice(0,7),was=es.filter(e=>A[e.k+'|'+gid+'|'+S.ad]===1).length;
+function monthStat(k,g,m){const mm=getAX().kg.get(k+'|'+g);let n=0,sum=0;if(mm)for(const [d,v] of mm)if(v===1&&d.startsWith(m)){n++;sum+=priceOn(g,d)}return [n,+sum.toFixed(2)]}
+function attPage(gid){if(!ATT_OK)return attWait();const es=activeIn(gid),m=S.ad.slice(0,7),was=es.filter(e=>A[e.k+'|'+gid+'|'+S.ad]===1).length;
 return `<section class="card"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><button class="back" onclick="S.gv='kids';draw()">← К группе</button><h2>Отметить посещаемость</h2><p class="muted">${esc(gn(gid))}</p></div><label class="muted">Дата занятия<br><input type="date" value="${S.ad}" onchange="S.ad=this.value||today();draw()"></label></div>
 <div class="bar"><button class="btn ghost" onclick="markAll(${gid},1)">Отметить всех</button><button class="btn ghost" onclick="markAll(${gid},0)">Снять все</button><span class="muted">Пришли: ${was} из ${es.length}</span></div>
 ${es.map(e=>{const k=kById(e.k),v=A[e.k+'|'+gid+'|'+S.ad]===1,t=monthStat(e.k,gid,m);return `<label class="row" style="cursor:pointer"><span style="display:flex;align-items:center;gap:12px"><input type="checkbox" style="width:24px;height:24px" ${v?'checked':''} onchange="mark(${e.k},${gid},this.checked?1:0)">${esc(k.n)}</span><span class="muted">за месяц: ${t[0]} зан. · ${t[1]} BYN</span></label>`}).join('')||'<p class="muted">В группе нет активных учеников</p>'}</section>`}
 
 /* ===== оплаты ===== */
-function lines(k){const gs=[...new Set(EN.filter(e=>e.k==k.id).map(e=>e.g).concat(Object.keys(A).filter(x=>x.split('|')[0]==k.id).map(x=>+x.split('|')[1])))].filter(g=>gById(g));
-const rows=gs.map(g=>{const ds=Object.keys(A).filter(x=>{const [a,b,c]=x.split('|');return a==k.id&&b==g&&c>=S.from&&c<=S.to&&A[x]===1}).map(x=>x.split('|')[2]),sum=ds.reduce((s,d)=>s+priceOn(g,d),0);return [gn(g),ds.length,ds.length?+(sum/ds.length).toFixed(2):curPrice(gById(g)),+sum.toFixed(2)]}).filter(r=>r[1]>0||true);
+function lines(k){const X=getAX(),gs=[...new Set(EN.filter(e=>e.k==k.id).map(e=>e.g).concat([...(X.bk.get(+k.id)||[])]))].filter(g=>gById(g));
+const rows=gs.map(g=>{const ds=[],mm=X.kg.get(k.id+'|'+g);if(mm)for(const [d,v] of mm)if(v===1&&d>=S.from&&d<=S.to)ds.push(d);const sum=ds.reduce((s,d)=>s+priceOn(g,d),0);return [gn(g),ds.length,ds.length?+(sum/ds.length).toFixed(2):curPrice(gById(g)),+sum.toFixed(2)]}).filter(r=>r[1]>0||true);
 return {rows,total:+rows.reduce((s,r)=>s+r[3],0).toFixed(2)}}
 const payTotal=L=>{const v=parseFloat(String(S.amt).replace(',','.'));return S.amt!==''&&v>=0?v:L.total};
-function payView(){const k=kById(S.pk);if(!k)return '<h1>Оплаты</h1><p class="muted">Нет учеников</p>';const L=lines(k),p=pById(k.pg)||{};
-const sorted=[...K].sort((a,b)=>a.n.localeCompare(b.n,'ru'));
+function payView(){if(!ATT_OK)return '<h1>Оплаты</h1>'+attWait();const k=kById(S.pk);if(!k)return '<h1>Оплаты</h1><p class="muted">Нет учеников</p>';const L=lines(k),p=pById(k.pg)||{};
+const sorted=[...K].sort((a,b)=>COL.compare(a.n,b.n));
 return `<h1>Оплаты</h1><section class="card"><div class="bar"><select onchange="S.pk=+this.value;S.amt='';draw()" aria-label="Ученик">${sorted.map(x=>`<option value="${x.id}" ${x.id==S.pk?'selected':''}>${esc(x.n)}</option>`).join('')}</select><label>с <input type="date" value="${S.from}" onchange="S.from=this.value;S.amt='';draw()"></label><label>по <input type="date" value="${S.to}" onchange="S.to=this.value;S.amt='';draw()"></label></div>
 <div class="scroll"><table><thead><tr><th>Группа</th><th class="num">Занятий</th><th class="num">Цена</th><th class="num">Сумма</th></tr></thead><tbody>${L.rows.map(r=>`<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td><td class="num">${r[2]} BYN</td><td class="num">${r[3]} BYN</td></tr>`).join('')||'<tr><td colspan="4" class="muted">У ученика нет групп</td></tr>'}<tr><td colspan="3"><b>Рассчитано по посещаемости</b></td><td class="num"><b>${L.total} BYN</b></td></tr></tbody></table></div>
 <div class="bar" style="align-items:end"><label class="muted">Сумма к оплате в чеке, BYN<br><input id="amt" inputmode="decimal" value="${S.amt!==''?esc(S.amt):L.total}" oninput="S.amt=this.value" style="width:150px"></label><button class="btn ghost" onclick="S.amt='';draw()">Вернуть расчётную</button></div>
@@ -219,11 +227,11 @@ toast(error?'Ошибка отправки: '+error.message:'Письмо отп
 function mailTo(){const to=($('to')||{}).value||'';pdf(0);location.href='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent('Оплата за занятия')+'&body='+encodeURIComponent('Здравствуйте! Во вложении информация об оплате за занятия. (Прикрепите скачанный PDF-файл.)')}
 
 /* ===== карточка ученика ===== */
-function drawer(){const d=$('drawer'),k=kById(S.drawer);d.classList.toggle('open',!!k);if(!k)return;const ad=IS_ADMIN(),p=pById(k.pg),v=x=>x?esc(x):'<span class="muted">—</span>',row=(l,h)=>`<dt>${l}</dt><dd>${h}</dd>`;
+function drawer(){const d=$('drawer'),k=kById(S.drawer);d.classList.toggle('open',!!k);$('dback').classList.toggle('open',!!k);if(!k)return;const ad=IS_ADMIN(),p=pById(k.pg),v=x=>x?esc(x):'<span class="muted">—</span>',row=(l,h)=>`<dt>${l}</dt><dd>${h}</dd>`;
 const es=EN.filter(e=>e.k==k.id);
-d.innerHTML=`<button class="back" onclick="S.drawer=null;drawer()">✕ Закрыть</button><h2>${esc(k.n)}</h2><dl>`+row('Дата рождения',k.dobI?fmt(k.dobI)+(k.bdr?` <span class="muted">(${esc(k.bdr)})</span>`:''):v(k.bdr))+row('Возраст',ageOf(k)===''?v(''):ageOf(k))+row('Телефон ученика',v(k.tel))+row('Родитель',v(p&&p.n))+row('Телефон родителя',p?v(p.ph)+(p.pr&&p.pr!==p.ph?` <span class="muted">(${esc(p.pr)})</span>`:''):v(''))+row('E-mail родителя',v(p&&p.em))+`</dl>`
+d.innerHTML=`<h2>${esc(k.n)}</h2><dl>`+row('Дата рождения',k.dobI?fmt(k.dobI)+(k.bdr?` <span class="muted">(${esc(k.bdr)})</span>`:''):v(k.bdr))+row('Возраст',ageOf(k)===''?v(''):ageOf(k))+row('Телефон ученика',v(k.tel))+row('Родитель',v(p&&p.n))+row('Телефон родителя',p?v(p.ph)+(p.pr&&p.pr!==p.ph?` <span class="muted">(${esc(p.pr)})</span>`:''):v(''))+row('E-mail родителя',v(p&&p.em))+`</dl>`
 +es.map(e=>{const g=gById(e.g);return g?`<div class="card" style="margin:10px 0;padding:12px"><dl style="margin:0">${row('Группа',`<button class="lnk" onclick="go('groups',{g:${e.g}})">${esc(g.n)}</button>, <button class="lnk" onclick="go('teachers',{t:${g.t},g:null})">${esc(tn(g.t))}</button>`)}${row('Статус',ST[e.st]||esc(e.st))}${row('Сезон',v(e.season))}${row('Договор',v(e.cn)+(e.cd?' от '+fmt(e.cd):''))}${row('Пробное',v(e.td?fmt(e.td):'')+(e.tn?` <span class="muted">(${esc(e.tn)})</span>`:''))}${row('Примечания',v(e.note))}${row('Источник',`<span class="muted">${esc(e.ref||'—')}</span>`)}</dl>${ad&&e.st=='active'?`<button class="lnk" onclick="rmFromGroup(${k.id},${e.g})">убрать из группы</button>`:''}</div>`:''}).join('')
-+(ad?`<select style="width:100%;margin:10px 0" aria-label="Добавить в группу" onchange="if(this.value)addToGroup(${k.id},+this.value)"><option value="">+ Добавить в группу…</option>${G.filter(x=>!EN.some(e=>e.k==k.id&&e.g==x.id&&e.st=='active')).map(x=>`<option value="${x.id}">${esc(gn(x.id))}</option>`).join('')}</select><button class="btn" style="width:100%" onclick="go('pay',{pk:${k.id},amt:''})">Оплата и PDF</button>`:'')}
++(ad?`<select style="width:100%;margin:10px 0" aria-label="Добавить в группу" onchange="if(this.value)addToGroup(${k.id},+this.value)"><option value="">+ Добавить в группу…</option>${G.filter(x=>!EN.some(e=>e.k==k.id&&e.g==x.id&&e.st=='active')).map(x=>`<option value="${x.id}">${esc(gn(x.id))}</option>`).join('')}</select>`:'')+`<div style="display:flex;gap:10px;margin:10px 0 0">${ad?`<button class="btn" style="flex:1" onclick="go('pay',{pk:${k.id},amt:''})">Оплата и PDF</button>`:''}<button class="btn ghost" style="flex:1" onclick="S.drawer=null;drawer()">Закрыть</button></div>`}
 
 /* ===== добавление ученика ===== */
 function openAdd(){const f=(id,lb,ty,ph)=>`<label>${lb}<input id="${id}" type="${ty||'text'}" ${ph?`placeholder="${ph}"`:''}></label>`;
@@ -234,7 +242,7 @@ ${f('m_n','ФИО ученика *')}${f('m_dob','Дата рождения','da
 ${f('m_cn','Номер договора')}${f('m_cd','Дата договора','date')}${f('m_td','Дата пробного занятия','date')}${f('m_tn','Заметка к пробному')}<label>Примечания<textarea id="m_note" rows="3"></textarea></label>
 <div class="bar" style="margin:6px 0 0"><button class="btn big" onclick="saveKid()">Сохранить</button><button class="btn ghost" onclick="closeAdd()">Отмена</button></div></div></div>`;$('m_n').focus&&$('m_n').focus()}
 const closeAdd=()=>{$('modal').innerHTML=''};
-document.addEventListener&&document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAdd()});
+document.addEventListener&&document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeAdd();if(S.drawer){S.drawer=null;drawer()}}});
 async function saveKid(){const v=id=>($(id).value||'').trim(),n=v('m_n');if(!n)return toast('Введите ФИО');
 if(K.some(k=>k.n.trim().toLowerCase()==n.toLowerCase())&&!confirm('Ученик с таким ФИО уже есть. Всё равно добавить?'))return;
 let guardian=null;if(v('m_gn')||v('m_gp')||v('m_ge')){const r=await sb.from('guardians').insert({full_name:v('m_gn')||null,phone:v('m_gp')||null,email:v('m_ge')||null}).select('id').single();if(r.error)return toast('Не сохранено: '+r.error.message);guardian=r.data.id}
@@ -255,24 +263,27 @@ if(keep&&id){const e=$(id);if(e){e.focus();try{e.setSelectionRange(99,99)}catch(
 async function all(t,sel,ord){const PS=1000,q=(c,a,b)=>[].concat(ord).reduce((x,o)=>x.order(o),sb.from(t).select(sel,c)).range(a,b);
 const f=await q({count:'exact'},0,PS-1);if(f.error)throw f.error;let o=f.data;const n=f.count||0;
 if(n>PS){const js=[];for(let a=PS;a<n;a+=PS)js.push(q(undefined,a,a+PS-1));for(const r of await Promise.all(js)){if(r.error)throw r.error;o=o.concat(r.data)}}return o}
-const fetchAll=()=>Promise.all([all('teachers','id,full_name','id'),all('groups','id,name,teacher_id,season,location,schedule','id'),all('group_prices','group_id,price,valid_from','id'),all('guardians','id,full_name,phone,phone_raw,email','id'),all('students','id,full_name,birth_date,birth_date_raw,phone,guardian_id','id'),all('enrollments','id,student_id,group_id,season,is_primary,status,contract_number,contract_date,trial_date,trial_note,notes,source_ref','id'),all('attendance','present,enrollments(student_id,group_id),lessons(id,group_id,lesson_date)',['lesson_id','enrollment_id'])]);
-function build([t,g,gp,pa,s,e,at]){
-const ti={},gi={},pi={},ki={};TU={};GU={};PU={};KU={};EU={};LS={};A={};
+const fetchAll=()=>Promise.all([all('teachers','id,full_name','id'),all('groups','id,name,teacher_id,season,location,schedule','id'),all('group_prices','group_id,price,valid_from','id'),all('guardians','id,full_name,phone,phone_raw,email','id'),all('students','id,full_name,birth_date,birth_date_raw,phone,guardian_id','id'),all('enrollments','id,student_id,group_id,season,is_primary,status,contract_number,contract_date,trial_date,trial_note,notes,source_ref','id')]);
+const fetchAtt=()=>all('attendance','present,enrollments(student_id,group_id),lessons(id,group_id,lesson_date)',['lesson_id','enrollment_id']);
+function build([t,g,gp,pa,s,e]){
+const ti={},gi={},pi={},ki={};TU={};GU={};PU={};KU={};EU={};LS={};A={};KI=ki;GI=gi;AX=null;ATT_OK=false;ATT_ERR=false;
 T=t.map((x,i)=>(ti[x.id]=i+1,TU[i+1]=x.id,{id:i+1,n:x.full_name}));
 const ph={};gp.sort((a,b)=>a.valid_from<b.valid_from?-1:1).forEach(x=>(ph[x.group_id]=ph[x.group_id]||[]).push({f:x.valid_from,p:+x.price}));
 G=g.filter(x=>IS_ADMIN()||x.teacher_id==ME.teacher_id).map((x,i)=>{gi[x.id]=i+1;GU[i+1]=x.id;const h=ph[x.id]||[],o={id:i+1,t:ti[x.teacher_id],n:x.name,season:x.season||'',s:x.schedule||'',loc:x.location||'',ph:h,p:0};o.p=curPrice(o);return o});
 P=pa.map((x,i)=>(pi[x.id]=i+1,PU[i+1]=x.id,{id:i+1,n:x.full_name||'',ph:x.phone||'',pr:x.phone_raw||'',em:x.email||''}));
 K=s.map((x,i)=>(ki[x.id]=i+1,KU[i+1]=x.id,{id:i+1,n:x.full_name,dobI:x.birth_date||'',bdr:x.birth_date_raw||'',tel:x.phone||'',pg:pi[x.guardian_id]||0}));
 EN=[];e.forEach((x,i)=>{const gg=gi[x.group_id],kk=ki[x.student_id];if(!gg||!kk)return;const o={id:i+1,u:x.id,k:kk,g:gg,season:x.season||'',prim:x.is_primary,st:x.status,cn:x.contract_number||'',cd:x.contract_date||'',td:x.trial_date||'',tn:x.trial_note||'',note:x.notes||'',ref:x.source_ref||''};EN.push(o);EU[kk+'|'+gg]=x.id});
-at.forEach(x=>{const en=x.enrollments,l=x.lessons;if(!en||!l)return;const k=ki[en.student_id],gg=gi[en.group_id];if(k&&gg){A[k+'|'+gg+'|'+l.lesson_date]=x.present?1:0;LS[gg+'|'+l.lesson_date]=l.id}});
 if(!IS_ADMIN()){const mine=new Set(EN.map(e=>e.k));K=K.filter(k=>mine.has(k.id))}reindex()}
+function buildAtt(at){if(!ME)return;for(const x of at){const en=x.enrollments,l=x.lessons;if(!en||!l)continue;const k=KI[en.student_id],gg=GI[en.group_id];if(k&&gg){const key=k+'|'+gg+'|'+l.lesson_date;if(!(key in A))A[key]=x.present?1:0;const lk=gg+'|'+l.lesson_date;if(!LS[lk])LS[lk]=l.id}}AX=null;getAX();ATT_OK=true}
 async function start(){const {data:{session}}=await sb.auth.getSession();if(!session){draw();return}
 $('v').innerHTML='<p class="muted" style="padding:24px">Загрузка…</p>';
 const [pr,ld]=await Promise.allSettled([sb.from('profiles').select('role,teacher_id').eq('id',session.user.id).maybeSingle(),fetchAll()]);
 const data=pr.status=='fulfilled'?pr.value.data:null;
 if(!data){toast('Профиль не создан: обратитесь к администратору');await sb.auth.signOut();draw();return}
 ME=data;if(ld.status=='fulfilled'){try{build(ld.value)}catch(e){toast('Ошибка загрузки: '+e.message)}}else toast('Ошибка загрузки: '+((ld.reason&&ld.reason.message)||ld.reason))
-S.ad=today();S.pk=(K[0]||{}).id||0;S.tab=IS_ADMIN()?'kids':'groups';draw()}
+S.ad=today();S.pk=(K[0]||{}).id||0;S.tab=IS_ADMIN()?'kids':'groups';draw();
+const attP=fetchAtt();
+attP.then(at=>{buildAtt(at);if(S.tab=='pay'||S.gv=='att')draw()}).catch(e=>{ATT_ERR=true;toast('Ошибка загрузки посещаемости: '+e.message);if(S.tab=='pay'||S.gv=='att')draw()})}
 async function login(){const {error}=await sb.auth.signInWithPassword({email:$('le').value,password:$('lp').value});if(error)return toast('Неверный e-mail или пароль');start()}
 async function logout(){await sb.auth.signOut();ME=null;draw()}
 document.addEventListener('DOMContentLoaded',()=>{window.sb?start():draw()});
