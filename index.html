@@ -1,11 +1,15 @@
 <!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dance UP Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script defer src="config.js"></script>
 <style>
+.top{border-radius:0 0 18px 18px}
+.pg{display:inline-flex;align-items:center;gap:10px}
+.pgrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+.pgrow p{margin:0}
 .top nav{display:flex}.top nav button{font:inherit;color:var(--brand-ink);background:none;border:0;padding:8px 14px;border-radius:8px;cursor:pointer}
 .top nav button.on{background:var(--brand-ink);color:#fff}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 8px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;font:inherit;color:inherit;text-align:left}
@@ -48,16 +52,23 @@ const fmt=s=>s?s.split('-').reverse().join('.'):'—';
 const age=d=>d?Math.max(0,Math.floor((Date.now()-new Date(d))/31557600000)):'';
 const ageOf=k=>k.dobI?age(k.dobI):(/^\d{4}$/.test((k.bdr||'').trim())?new Date().getFullYear()-(+k.bdr.trim()):'');
 const IS_ADMIN=()=>!!ME&&ME.role==='admin';
-const tn=id=>(T.find(t=>t.id==id)||{}).n||'';
-const gById=id=>G.find(x=>x.id==id);
-const kById=id=>K.find(x=>x.id==id);
-const pById=id=>P.find(x=>x.id==id)||null;
+const IX={t:new Map(),g:new Map(),k:new Map(),p:new Map()};
+function reindex(){IX.t=new Map(T.map(x=>[x.id,x]));IX.g=new Map(G.map(x=>[x.id,x]));IX.k=new Map(K.map(x=>[x.id,x]));IX.p=new Map(P.map(x=>[x.id,x]))}
+const COL=new Intl.Collator('ru');
+const tn=id=>((IX.t.get(+id)||T.find(t=>t.id==id))||{}).n||'';
+const gById=id=>IX.g.get(+id)||G.find(x=>x.id==id);
+const kById=id=>IX.k.get(+id)||K.find(x=>x.id==id);
+const pById=id=>IX.p.get(+id)||P.find(x=>x.id==id)||null;
+function growAll(){const l=document.querySelectorAll('textarea.ta');if(!l.length)return;for(const e of l)e.style.height='auto';const h=[];for(const e of l)h.push(e.scrollHeight+2);l.forEach((e,i)=>{e.style.height=h[i]+'px'})}
+let _dt;const drawD=()=>{clearTimeout(_dt);_dt=setTimeout(()=>draw(1),180)};
+const openK=id=>{S.drawer=id;drawer()};
+let _pdfP;const loadPdf=()=>window.html2pdf?Promise.resolve():(_pdfP=_pdfP||new Promise((ok,no)=>{const e=document.createElement('script');e.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';e.onload=ok;e.onerror=()=>{_pdfP=null;no(new Error('не удалось загрузить модуль PDF'))};document.head.appendChild(e)}));
 const gn=id=>{const g=gById(id);return g?tn(g.t)+' · '+g.n+(g.season?' ('+g.season+')':''):''};
 const ST={active:'Активен',reserve:'Резерв',left:'Выбыл'};
 const monthRange=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return [new Date(Date.UTC(y,m,1)).toISOString().slice(0,10),new Date(Date.UTC(y,m+1,0)).toISOString().slice(0,10)]};
 const S={tab:'kids',t:null,g:null,gv:'kids',drawer:null,tq:'',tc:'',a1:'',a2:'',ts:'az',pp:100,tp:0,ty:'',tt:0,tf:0,tst:'',pk:0,from:monthRange()[0],to:monthRange()[1],ad:today(),gq:'',cg:false,amt:''};
 function toast(m){const e=$('toast');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',2800)}
-function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:''},o);S.drawer=null;draw()}
+function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:''},o);S.drawer=null;drawer()}
 const priceOn=(g,d)=>{const x=gById(g);let p=0;if(x)for(const h of x.ph)if(h.f<=d)p=h.p;return p};
 const curPrice=g=>{let p=0;const t=today();for(const h of g.ph)if(h.f<=t)p=h.p;return p};
 const rowsOf=g=>EN.filter(e=>e.g==g);
@@ -66,8 +77,8 @@ const enOf=(k,g)=>EN.find(e=>e.k==k&&e.g==g);
 
 /* ===== вкладки ===== */
 const TABS=[['kids','Ученики'],['groups','Группы'],['teachers','Преподаватели'],['pay','Оплаты']];
-const kidRow=k=>`<button class="row" onclick="S.drawer=${k.id};draw()"><span>${esc(k.n)}</span><span class="muted">${esc(EN.filter(e=>e.k==k.id&&e.st=='active').map(e=>(gById(e.g)||{}).n).join(', '))}</span></button>`;
-const gKid=e=>{const k=kById(e.k);return `<div class="row" style="cursor:default"><button class="lnk" style="text-decoration:none;color:inherit;text-align:left" onclick="S.drawer=${k.id};draw()">${esc(k.n)}${e.st!='active'?` <span class="chip due">${ST[e.st]}</span>`:''}</button>${IS_ADMIN()&&e.st=='active'?`<button class="lnk" onclick="rmFromGroup(${e.k},${e.g})">убрать</button>`:''}</div>`};
+const kidRow=k=>`<button class="row" onclick="openK(${k.id})"><span>${esc(k.n)}</span><span class="muted">${esc(EN.filter(e=>e.k==k.id&&e.st=='active').map(e=>(gById(e.g)||{}).n).join(', '))}</span></button>`;
+const gKid=e=>{const k=kById(e.k);return `<div class="row" style="cursor:default"><button class="lnk" style="text-decoration:none;color:inherit;text-align:left" onclick="openK(${k.id})">${esc(k.n)}${e.st!='active'?` <span class="chip due">${ST[e.st]}</span>`:''}</button>${IS_ADMIN()&&e.st=='active'?`<button class="lnk" onclick="rmFromGroup(${e.k},${e.g})">убрать</button>`:''}</div>`};
 
 function view(){const t=S.tab,ad=IS_ADMIN();
 if(t=='kids')return kidsView(ad);
@@ -79,39 +90,40 @@ if(t=='pay')return payView()}
 
 /* ===== вкладка «Ученики»: таблица, одна строка = запись ученика в группе ===== */
 function kidsView(ad){const q=S.tq.toLowerCase(),cq=S.tc.trim().toLowerCase(),a1=S.a1===''?null:+S.a1,a2=S.a2===''?null:+S.a2,ro=ad?'':' readonly';
-const by={};EN.forEach(e=>(by[e.k]=by[e.k]||[]).push(e));let rs=[];K.forEach(k=>(by[k.id]||[null]).forEach(e=>rs.push([k,e])));
+const AG=new Map(K.map(k=>[k.id,ageOf(k)]));const by={};EN.forEach(e=>(by[e.k]=by[e.k]||[]).push(e));let rs=[];K.forEach(k=>(by[k.id]||[null]).forEach(e=>rs.push([k,e])));
 const seasons=[...new Set(EN.map(e=>e.season).filter(Boolean))].sort();
 rs=rs.filter(([k,e])=>{const p=pById(k.pg)||{};
 if(q&&!(k.n+' '+(p.n||'')+' '+(p.ph||'')+' '+k.tel+' '+(p.em||'')+' '+(e?e.note+' '+e.tn:'')).toLowerCase().includes(q))return false;
 if(cq){const c=e?e.cn:'',lead=(c.match(/^\s*(\d+)/)||[])[1]||'';if(/^\d+$/.test(cq)?!lead.startsWith(cq):!c.toLowerCase().includes(cq))return false}
 if(S.tf==-1?e:(S.tf&&(!e||e.g!=S.tf)))return false;if(S.tt&&!(e&&(gById(e.g)||{}).t==S.tt))return false;
 if(S.ty&&(!e||e.season!==S.ty))return false;if(S.tst&&(!e||e.st!==S.tst))return false;
-if(a1!=null||a2!=null){const a=ageOf(k);if(a==='')return false;if(a1!=null&&a<a1)return false;if(a2!=null&&a>a2)return false}return true});
-const ao=k=>ageOf(k)===''?999:ageOf(k),gl=r=>r[1]?gn(r[1].g):'';
-const cmp={az:(a,b)=>a[0].n.localeCompare(b[0].n,'ru'),za:(a,b)=>b[0].n.localeCompare(a[0].n,'ru'),ageup:(a,b)=>ao(a[0])-ao(b[0]),agedown:(a,b)=>(ageOf(b[0])===''?-1:ageOf(b[0]))-(ageOf(a[0])===''?-1:ageOf(a[0])),grp:(a,b)=>gl(a).localeCompare(gl(b),'ru')}[S.ts];rs=rs.slice().sort(cmp);
+if(a1!=null||a2!=null){const a=AG.get(k.id);if(a==='')return false;if(a1!=null&&a<a1)return false;if(a2!=null&&a>a2)return false}return true});
+const ao=k=>AG.get(k.id)===''?999:AG.get(k.id),glc=new Map(),gl=r=>{if(!r[1])return '';let v=glc.get(r[1].g);if(v==null){v=gn(r[1].g);glc.set(r[1].g,v)}return v};
+const cmp={az:(a,b)=>COL.compare(a[0].n,b[0].n),za:(a,b)=>COL.compare(b[0].n,a[0].n),ageup:(a,b)=>ao(a[0])-ao(b[0]),agedown:(a,b)=>(AG.get(b[0].id)===''?-1:AG.get(b[0].id))-(AG.get(a[0].id)===''?-1:AG.get(a[0].id)),grp:(a,b)=>COL.compare(gl(a),gl(b))}[S.ts];rs=rs.slice().sort(cmp);
 const per=S.pp||rs.length||1,pages=Math.max(1,Math.ceil(rs.length/per));S.tp=Math.min(S.tp,pages-1);
+const pager=`<div class="pg"><button class="btn ghost" ${S.tp?'':'disabled'} onclick="S.tp--;draw()">←</button><span class="muted">Стр. ${S.tp+1} из ${pages}</span><button class="btn ghost" ${S.tp<pages-1?'':'disabled'} onclick="S.tp++;draw()">→</button></div>`;
 const ta=(k,e,f,w,lb,val,multi)=>`<textarea class="ta" rows="1" style="min-width:${w}px" aria-label="${lb}" onchange="edit(${k.id},${e?e.id:0},'${f}',this.value)" oninput="grow(this)" ${multi?'':`onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"`}${ro}>${esc(val)}</textarea>`,
 dc=(k,e,f,val,lb)=>`<input type="date" value="${esc(val)}" onchange="edit(${k.id},${e?e.id:0},'${f}',this.value)" aria-label="${lb}"${ro}>`,
 opt=(arr,cur)=>arr.map(y=>`<option ${y==cur?'selected':''}>${esc(y)}</option>`).join('');
 return `<h1>Ученики</h1><p class="muted">Всего учеников: ${K.length}, записей в группы: ${EN.length}. ${ad?'Нажмите на ячейку, чтобы изменить значение: оно сохраняется сразу.':''}</p>
 ${ad?`<div class="bar"><button class="btn big" onclick="openAdd()">+ Добавить ученика</button></div>`:''}
 ${ad&&!K.length?'<section class="card" style="margin-bottom:14px"><p>В базе пока нет учеников. Загрузите CSV-файлы в Supabase (шаг 3 в ИНСТРУКЦИЯ.md) и обновите страницу.</p></section>':''}
-<section class="card"><div class="fl"><label>Поиск<input id="tq" type="search" value="${esc(S.tq)}" placeholder="ФИО, родитель, телефон" oninput="S.tq=this.value;S.tp=0;draw(1)"></label>
-<label>По номеру договора<input id="tc" type="search" value="${esc(S.tc)}" placeholder="например, 680" style="min-width:150px" oninput="S.tc=this.value;S.tp=0;draw(1)"></label>
-<label>Возраст от<input id="a1" inputmode="numeric" value="${esc(S.a1)}" style="min-width:70px;width:70px" oninput="S.a1=this.value.replace(/\D/g,'');S.tp=0;draw(1)"></label><label>до<input id="a2" inputmode="numeric" value="${esc(S.a2)}" style="min-width:70px;width:70px" oninput="S.a2=this.value.replace(/\D/g,'');S.tp=0;draw(1)"></label>
+<section class="card"><div class="fl"><label>Поиск<input id="tq" type="search" value="${esc(S.tq)}" placeholder="ФИО, родитель, телефон" oninput="S.tq=this.value;S.tp=0;drawD()"></label>
+<label>По номеру договора<input id="tc" type="search" value="${esc(S.tc)}" placeholder="например, 680" style="min-width:150px" oninput="S.tc=this.value;S.tp=0;drawD()"></label>
+<label>Возраст от<input id="a1" inputmode="numeric" value="${esc(S.a1)}" style="min-width:70px;width:70px" oninput="S.a1=this.value.replace(/\D/g,'');S.tp=0;drawD()"></label><label>до<input id="a2" inputmode="numeric" value="${esc(S.a2)}" style="min-width:70px;width:70px" oninput="S.a2=this.value.replace(/\D/g,'');S.tp=0;drawD()"></label>
 <label>Сезон<select onchange="S.ty=this.value;S.tp=0;draw()"><option value="">Все</option>${opt(seasons,S.ty)}</select></label>
 <label>Статус<select onchange="S.tst=this.value;S.tp=0;draw()"><option value="">Все</option>${Object.keys(ST).map(s=>`<option value="${s}" ${S.tst==s?'selected':''}>${ST[s]}</option>`).join('')}</select></label>
 <label>Преподаватель<select onchange="S.tt=+this.value;S.tp=0;draw()"><option value="0">Все</option>${T.map(x=>`<option value="${x.id}" ${x.id==S.tt?'selected':''}>${esc(x.n)}</option>`).join('')}</select></label>
 <label>Группа<select onchange="S.tf=+this.value;S.tp=0;draw()"><option value="0">Все</option><option value="-1" ${S.tf==-1?'selected':''}>Без группы</option>${G.map(g=>`<option value="${g.id}" ${g.id==S.tf?'selected':''}>${esc(gn(g.id))}</option>`).join('')}</select></label>
 <label>Сортировка<select onchange="S.ts=this.value;draw()">${[['az','По алфавиту А→Я'],['za','По алфавиту Я→А'],['ageup','Возраст: младшие сначала'],['agedown','Возраст: старшие сначала'],['grp','По группе']].map(o=>`<option value="${o[0]}" ${o[0]==S.ts?'selected':''}>${o[1]}</option>`).join('')}</select></label>
 <label>Показывать<select onchange="S.pp=+this.value;S.tp=0;draw()">${[[50,'50'],[100,'100'],[300,'300'],[0,'Все']].map(o=>`<option value="${o[0]}" ${o[0]==S.pp?'selected':''}>${o[1]}</option>`).join('')}</select></label></div>
-<p class="muted" style="margin-top:12px">Найдено: ${rs.length}${(a1!=null||a2!=null)?' (если возраст неизвестен, строка скрыта)':''}</p>
+<div class="pgrow"><p class="muted">Найдено: ${rs.length}${(a1!=null||a2!=null)?' (если возраст неизвестен, строка скрыта)':''}</p>${pager}</div>
 <div class="scroll"><table class="ed"><thead><tr><th></th><th>Статус</th><th>ФИО ученика</th><th>Дата рождения</th><th>Возраст</th><th>Телефон ученика</th><th>Родитель</th><th>Телефон родителя</th><th>E-mail родителя</th><th>Преподаватель</th><th>Группа</th><th>Сезон</th><th>№ договора</th><th>Дата договора</th><th>Дата пробного</th><th>Заметка к пробному</th><th>Примечания</th></tr></thead><tbody>${rs.slice(S.tp*per,S.tp*per+per).map(([k,e])=>{const p=pById(k.pg)||{n:'',ph:'',em:''},g=e&&gById(e.g),en=(f,w,lb,val,m)=>e?ta(k,e,f,w,lb,val,m):'<span class="muted">—</span>';
-return `<tr><td data-label=""><button class="btn cbtn" onclick="S.drawer=${k.id};draw()">Карточка</button></td>
+return `<tr><td data-label=""><button class="btn cbtn" onclick="openK(${k.id})">Карточка</button></td>
 <td data-label="Статус">${e?`<select onchange="edit(${k.id},${e.id},'st',this.value)" aria-label="Статус"${ad?'':' disabled'}>${Object.keys(ST).map(s=>`<option value="${s}" ${e.st==s?'selected':''}>${ST[s]}</option>`).join('')}</select>`:'<span class="muted">—</span>'}</td>
 <td data-label="ФИО">${ta(k,e,'n',230,'ФИО ученика',k.n)}</td>
 <td data-label="Дата рожд.">${dc(k,e,'dobI',k.dobI,'Дата рождения')}${!k.dobI&&k.bdr?ta(k,e,'bdr',120,'Дата рождения (как в таблице)',k.bdr):''}</td>
-<td data-label="Возраст" class="muted">${ageOf(k)}</td>
+<td data-label="Возраст" class="muted">${AG.get(k.id)}</td>
 <td data-label="Тел. ученика">${ta(k,e,'tel',140,'Телефон ученика',k.tel)}</td>
 <td data-label="Родитель">${ta(k,e,'gn',200,'Родитель',p.n)}</td>
 <td data-label="Тел. родителя">${ta(k,e,'gph',140,'Телефон родителя',p.ph)}</td>
@@ -124,7 +136,7 @@ return `<tr><td data-label=""><button class="btn cbtn" onclick="S.drawer=${k.id}
 <td data-label="Дата пробного">${e?dc(k,e,'td',e.td,'Дата пробного занятия'):'<span class="muted">—</span>'}</td>
 <td data-label="Заметка к пробному">${en('tn',160,'Заметка к пробному',e?e.tn:'',1)}</td>
 <td data-label="Примечания">${en('note',220,'Примечания',e?e.note:'',1)}</td></tr>`}).join('')||'<tr><td colspan="17" class="muted">Никого не нашли: измените поиск или фильтры</td></tr>'}</tbody></table></div>
-<div class="bar"><button class="btn ghost" ${S.tp?'':'disabled'} onclick="S.tp--;draw()">←</button><span class="muted">Стр. ${S.tp+1} из ${pages}</span><button class="btn ghost" ${S.tp<pages-1?'':'disabled'} onclick="S.tp++;draw()">→</button></div></section>`}
+<div class="pgrow" style="justify-content:flex-end">${pager}</div></section>`}
 
 /* ===== редактирование ячеек ===== */
 const SF={n:'full_name',dobI:'birth_date',bdr:'birth_date_raw',tel:'phone'},GK={gn:['n','full_name'],gph:['ph','phone'],gem:['em','email']},EF={cn:['cn','contract_number'],cd:['cd','contract_date'],td:['td','trial_date'],tn:['tn','trial_note'],note:['note','notes'],st:['st','status']};
@@ -144,7 +156,7 @@ ${ad?`<div class="bar"><label class="muted">Расписание<br><input value
 <div class="bar"><button class="btn big" onclick="S.gv='att';draw()">Отметить посещаемость</button>${ad?`<button class="btn ghost" style="color:#B3261E" onclick="delGroup(${gid})">Удалить группу</button>`:''}</div>
 <p class="muted">В группе: ${act.length}</p>${act.map(e=>ad?gKid(e):kidRow(kById(e.k))).join('')||'<p class="muted">В группе пока нет учеников</p>'}
 ${oth.length?`<p class="muted" style="margin-top:14px">Резерв и выбывшие: ${oth.length}</p>${oth.map(gKid).join('')}`:''}
-${ad?`<div style="margin-top:14px"><input id="gsq" type="search" value="${esc(S.gq)}" placeholder="Найти ученика, чтобы добавить в группу" style="width:100%" oninput="S.gq=this.value;draw(1)">${addRes(gid)}</div>`:''}</section>`}
+${ad?`<div style="margin-top:14px"><input id="gsq" type="search" value="${esc(S.gq)}" placeholder="Найти ученика, чтобы добавить в группу" style="width:100%" oninput="S.gq=this.value;drawD()">${addRes(gid)}</div>`:''}</section>`}
 const addRes=gid=>{const q=S.gq.trim().toLowerCase();if(!q)return '';const r=K.filter(k=>!EN.some(e=>e.k==k.id&&e.g==gid&&e.st=='active')&&(k.n+' '+((pById(k.pg)||{}).n||'')).toLowerCase().includes(q)).slice(0,10);return r.length?r.map(k=>`<div class="row" style="cursor:default"><span>${esc(k.n)} <span class="muted">${k.dobI?fmt(k.dobI):esc(k.bdr)}</span></span><button class="btn" style="padding:6px 12px" onclick="addToGroup(${k.id},${gid})">+ Добавить</button></div>`).join(''):'<p class="muted">Никого не нашли</p>'};
 const lastSeason=()=>[...new Set(G.map(g=>g.season).filter(Boolean))].sort().pop()||'';
 const groupForm=()=>`<section class="card" style="margin:14px 0"><h2>Новая группа</h2><div class="fl"><label>Преподаватель<select id="gt">${T.map(t=>`<option value="${t.id}">${esc(t.n)}</option>`).join('')}</select></label><label>Название<input id="gnm" placeholder="например, 7-9"></label><label>Сезон<input id="gse" value="${esc(lastSeason())}" placeholder="например, 26-27" style="min-width:100px"></label><label>Расписание<input id="gs" placeholder="вт/чт 17:20"></label><label>Локация<input id="glc"></label><label>Стоимость занятия, BYN<input id="gpr" inputmode="decimal" style="min-width:110px"></label></div><div class="bar"><button class="btn" onclick="createGroup()">Создать группу</button><button class="lnk" onclick="addTeacher()">+ новый преподаватель</button></div></section>`;
@@ -196,7 +208,7 @@ return `<h1>Оплаты</h1><section class="card"><div class="bar"><select onch
 <div class="scroll"><table><thead><tr><th>Группа</th><th class="num">Занятий</th><th class="num">Цена</th><th class="num">Сумма</th></tr></thead><tbody>${L.rows.map(r=>`<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td><td class="num">${r[2]} BYN</td><td class="num">${r[3]} BYN</td></tr>`).join('')||'<tr><td colspan="4" class="muted">У ученика нет групп</td></tr>'}<tr><td colspan="3"><b>Рассчитано по посещаемости</b></td><td class="num"><b>${L.total} BYN</b></td></tr></tbody></table></div>
 <div class="bar" style="align-items:end"><label class="muted">Сумма к оплате в чеке, BYN<br><input id="amt" inputmode="decimal" value="${S.amt!==''?esc(S.amt):L.total}" oninput="S.amt=this.value" style="width:150px"></label><button class="btn ghost" onclick="S.amt='';draw()">Вернуть расчётную</button></div>
 <div class="bar"><input id="to" type="email" value="${esc(p.em||'')}" placeholder="E-mail родителя" style="flex:1;min-width:220px"><button class="btn ghost" onclick="pdf(0)">Скачать PDF</button><button class="btn ghost" onclick="mailTo()">Открыть в почте</button><button class="btn" onclick="pdf(1)">Отправить родителю</button></div>${p.em?'':'<p class="muted">У родителя не указан e-mail: введите его выше или впишите в таблице «Ученики».</p>'}</section>`}
-async function pdf(send){const k=kById(S.pk),L=lines(k),to=($('to')||{}).value,total=payTotal(L);
+async function pdf(send){try{await loadPdf()}catch(e){return toast(e.message)}const k=kById(S.pk),L=lines(k),to=($('to')||{}).value,total=payTotal(L);
 $('inv').innerHTML=`<h2 style="font-family:Arial">Dance UP Studio — счёт на оплату</h2><p>Ученик: <b>${esc(k.n)}</b><br>Период: ${fmt(S.from)} — ${fmt(S.to)}</p><table style="width:100%;border-collapse:collapse"><tr><th align="left">Группа</th><th>Занятий</th><th>Цена</th><th align="right">Сумма</th></tr>${L.rows.filter(r=>r[1]>0).map(r=>`<tr><td>${esc(r[0])}</td><td align="center">${r[1]}</td><td align="center">${r[2]} BYN</td><td align="right">${r[3]} BYN</td></tr>`).join('')}</table><h3 style="text-align:right">Итого к оплате: ${total} BYN</h3>`;
 const job=html2pdf().set({margin:8,filename:`Оплата_${k.n}_${S.from}_${S.to}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4'}}).from($('inv'));
 if(!send){job.save();return}
@@ -209,7 +221,7 @@ function mailTo(){const to=($('to')||{}).value||'';pdf(0);location.href='mailto:
 /* ===== карточка ученика ===== */
 function drawer(){const d=$('drawer'),k=kById(S.drawer);d.classList.toggle('open',!!k);if(!k)return;const ad=IS_ADMIN(),p=pById(k.pg),v=x=>x?esc(x):'<span class="muted">—</span>',row=(l,h)=>`<dt>${l}</dt><dd>${h}</dd>`;
 const es=EN.filter(e=>e.k==k.id);
-d.innerHTML=`<button class="back" onclick="S.drawer=null;draw()">✕ Закрыть</button><h2>${esc(k.n)}</h2><dl>`+row('Дата рождения',k.dobI?fmt(k.dobI)+(k.bdr?` <span class="muted">(${esc(k.bdr)})</span>`:''):v(k.bdr))+row('Возраст',ageOf(k)===''?v(''):ageOf(k))+row('Телефон ученика',v(k.tel))+row('Родитель',v(p&&p.n))+row('Телефон родителя',p?v(p.ph)+(p.pr&&p.pr!==p.ph?` <span class="muted">(${esc(p.pr)})</span>`:''):v(''))+row('E-mail родителя',v(p&&p.em))+`</dl>`
+d.innerHTML=`<button class="back" onclick="S.drawer=null;drawer()">✕ Закрыть</button><h2>${esc(k.n)}</h2><dl>`+row('Дата рождения',k.dobI?fmt(k.dobI)+(k.bdr?` <span class="muted">(${esc(k.bdr)})</span>`:''):v(k.bdr))+row('Возраст',ageOf(k)===''?v(''):ageOf(k))+row('Телефон ученика',v(k.tel))+row('Родитель',v(p&&p.n))+row('Телефон родителя',p?v(p.ph)+(p.pr&&p.pr!==p.ph?` <span class="muted">(${esc(p.pr)})</span>`:''):v(''))+row('E-mail родителя',v(p&&p.em))+`</dl>`
 +es.map(e=>{const g=gById(e.g);return g?`<div class="card" style="margin:10px 0;padding:12px"><dl style="margin:0">${row('Группа',`<button class="lnk" onclick="go('groups',{g:${e.g}})">${esc(g.n)}</button>, <button class="lnk" onclick="go('teachers',{t:${g.t},g:null})">${esc(tn(g.t))}</button>`)}${row('Статус',ST[e.st]||esc(e.st))}${row('Сезон',v(e.season))}${row('Договор',v(e.cn)+(e.cd?' от '+fmt(e.cd):''))}${row('Пробное',v(e.td?fmt(e.td):'')+(e.tn?` <span class="muted">(${esc(e.tn)})</span>`:''))}${row('Примечания',v(e.note))}${row('Источник',`<span class="muted">${esc(e.ref||'—')}</span>`)}</dl>${ad&&e.st=='active'?`<button class="lnk" onclick="rmFromGroup(${k.id},${e.g})">убрать из группы</button>`:''}</div>`:''}).join('')
 +(ad?`<select style="width:100%;margin:10px 0" aria-label="Добавить в группу" onchange="if(this.value)addToGroup(${k.id},+this.value)"><option value="">+ Добавить в группу…</option>${G.filter(x=>!EN.some(e=>e.k==k.id&&e.g==x.id&&e.st=='active')).map(x=>`<option value="${x.id}">${esc(gn(x.id))}</option>`).join('')}</select><button class="btn" style="width:100%" onclick="go('pay',{pk:${k.id},amt:''})">Оплата и PDF</button>`:'')}
 
@@ -236,13 +248,15 @@ closeAdd();Object.assign(S,{tab:'kids',tq:n,tc:'',a1:'',a2:'',ty:'',tst:'',tt:0,
 /* ===== вход, загрузка, отрисовка ===== */
 const SETUP=`<section class="card" style="max-width:560px;margin:40px auto"><h2>Сайт не подключён к базе данных</h2><p>Здесь нет тестовых данных: все ученики, группы и преподаватели хранятся в вашем Supabase. Чтобы начать работу, создайте файл <b>config.js</b> рядом с index.html (образец: config.example.js) и впишите адрес проекта и ключ anon. Шаги описаны в ИНСТРУКЦИЯ.md.</p></section>`;
 const LOGIN=`<section class="card" style="max-width:360px;margin:40px auto"><h2>Вход</h2><div class="bar" style="flex-direction:column;align-items:stretch"><input id="le" type="email" placeholder="E-mail" autocomplete="username"><input id="lp" type="password" placeholder="Пароль" autocomplete="current-password"><button class="btn" onclick="login()">Войти</button></div></section>`;
-function draw(keep){if(!window.sb){$('nav').innerHTML='';$('v').innerHTML=SETUP;return}if(!ME){$('nav').innerHTML='';$('v').innerHTML=LOGIN;drawer();return}
+function draw(keep){reindex();if(!window.sb){$('nav').innerHTML='';$('v').innerHTML=SETUP;return}if(!ME){$('nav').innerHTML='';$('v').innerHTML=LOGIN;drawer();return}
 const a=document.activeElement,id=a&&a.id;$('nav').innerHTML=TABS.filter(t=>IS_ADMIN()||t[0]!='pay').map(t=>`<button class="${t[0]==S.tab?'on':''}" onclick="go('${t[0]}',{t:null,g:null})">${t[1]}</button>`).join('')+'<button onclick="logout()">Выйти</button>';
-$('v').innerHTML=view();drawer();if(document.querySelectorAll)document.querySelectorAll('textarea.ta').forEach(grow);
+$('v').innerHTML=view();drawer();if(document.querySelectorAll)growAll();
 if(keep&&id){const e=$(id);if(e){e.focus();try{e.setSelectionRange(99,99)}catch(_){}}}}
-async function all(t,sel,ord){let o=[],f=0;for(;;){const {data,error}=await sb.from(t).select(sel).order(ord).range(f,f+999);if(error)throw error;o=o.concat(data);if(data.length<1000)return o;f+=1000}}
-async function load(){
-const [t,g,gp,pa,s,e,at]=await Promise.all([all('teachers','id,full_name','id'),all('groups','id,name,teacher_id,season,location,schedule','id'),all('group_prices','group_id,price,valid_from','id'),all('guardians','id,full_name,phone,phone_raw,email','id'),all('students','id,full_name,birth_date,birth_date_raw,phone,guardian_id','id'),all('enrollments','id,student_id,group_id,season,is_primary,status,contract_number,contract_date,trial_date,trial_note,notes,source_ref','id'),all('attendance','present,enrollments(student_id,group_id),lessons(id,group_id,lesson_date)','lesson_id')]);
+async function all(t,sel,ord){const PS=1000,q=(c,a,b)=>[].concat(ord).reduce((x,o)=>x.order(o),sb.from(t).select(sel,c)).range(a,b);
+const f=await q({count:'exact'},0,PS-1);if(f.error)throw f.error;let o=f.data;const n=f.count||0;
+if(n>PS){const js=[];for(let a=PS;a<n;a+=PS)js.push(q(undefined,a,a+PS-1));for(const r of await Promise.all(js)){if(r.error)throw r.error;o=o.concat(r.data)}}return o}
+const fetchAll=()=>Promise.all([all('teachers','id,full_name','id'),all('groups','id,name,teacher_id,season,location,schedule','id'),all('group_prices','group_id,price,valid_from','id'),all('guardians','id,full_name,phone,phone_raw,email','id'),all('students','id,full_name,birth_date,birth_date_raw,phone,guardian_id','id'),all('enrollments','id,student_id,group_id,season,is_primary,status,contract_number,contract_date,trial_date,trial_note,notes,source_ref','id'),all('attendance','present,enrollments(student_id,group_id),lessons(id,group_id,lesson_date)',['lesson_id','enrollment_id'])]);
+function build([t,g,gp,pa,s,e,at]){
 const ti={},gi={},pi={},ki={};TU={};GU={};PU={};KU={};EU={};LS={};A={};
 T=t.map((x,i)=>(ti[x.id]=i+1,TU[i+1]=x.id,{id:i+1,n:x.full_name}));
 const ph={};gp.sort((a,b)=>a.valid_from<b.valid_from?-1:1).forEach(x=>(ph[x.group_id]=ph[x.group_id]||[]).push({f:x.valid_from,p:+x.price}));
@@ -251,14 +265,16 @@ P=pa.map((x,i)=>(pi[x.id]=i+1,PU[i+1]=x.id,{id:i+1,n:x.full_name||'',ph:x.phone|
 K=s.map((x,i)=>(ki[x.id]=i+1,KU[i+1]=x.id,{id:i+1,n:x.full_name,dobI:x.birth_date||'',bdr:x.birth_date_raw||'',tel:x.phone||'',pg:pi[x.guardian_id]||0}));
 EN=[];e.forEach((x,i)=>{const gg=gi[x.group_id],kk=ki[x.student_id];if(!gg||!kk)return;const o={id:i+1,u:x.id,k:kk,g:gg,season:x.season||'',prim:x.is_primary,st:x.status,cn:x.contract_number||'',cd:x.contract_date||'',td:x.trial_date||'',tn:x.trial_note||'',note:x.notes||'',ref:x.source_ref||''};EN.push(o);EU[kk+'|'+gg]=x.id});
 at.forEach(x=>{const en=x.enrollments,l=x.lessons;if(!en||!l)return;const k=ki[en.student_id],gg=gi[en.group_id];if(k&&gg){A[k+'|'+gg+'|'+l.lesson_date]=x.present?1:0;LS[gg+'|'+l.lesson_date]=l.id}});
-if(!IS_ADMIN()){const mine=new Set(EN.map(e=>e.k));K=K.filter(k=>mine.has(k.id))}}
+if(!IS_ADMIN()){const mine=new Set(EN.map(e=>e.k));K=K.filter(k=>mine.has(k.id))}reindex()}
 async function start(){const {data:{session}}=await sb.auth.getSession();if(!session){draw();return}
-const {data}=await sb.from('profiles').select('role,teacher_id').eq('id',session.user.id).maybeSingle();
+$('v').innerHTML='<p class="muted" style="padding:24px">Загрузка…</p>';
+const [pr,ld]=await Promise.allSettled([sb.from('profiles').select('role,teacher_id').eq('id',session.user.id).maybeSingle(),fetchAll()]);
+const data=pr.status=='fulfilled'?pr.value.data:null;
 if(!data){toast('Профиль не создан: обратитесь к администратору');await sb.auth.signOut();draw();return}
-ME=data;try{await load()}catch(e){toast('Ошибка загрузки: '+e.message)}
+ME=data;if(ld.status=='fulfilled'){try{build(ld.value)}catch(e){toast('Ошибка загрузки: '+e.message)}}else toast('Ошибка загрузки: '+((ld.reason&&ld.reason.message)||ld.reason))
 S.ad=today();S.pk=(K[0]||{}).id||0;S.tab=IS_ADMIN()?'kids':'groups';draw()}
 async function login(){const {error}=await sb.auth.signInWithPassword({email:$('le').value,password:$('lp').value});if(error)return toast('Неверный e-mail или пароль');start()}
 async function logout(){await sb.auth.signOut();ME=null;draw()}
-window.sb?start():draw();
+document.addEventListener('DOMContentLoaded',()=>{window.sb?start():draw()});
 
 </script></body></html>
