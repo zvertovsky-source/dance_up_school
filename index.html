@@ -1,0 +1,264 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dance UP Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+.top nav{display:flex}.top nav button{font:inherit;color:var(--brand-ink);background:none;border:0;padding:8px 14px;border-radius:8px;cursor:pointer}
+.top nav button.on{background:var(--brand-ink);color:#fff}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 8px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px;width:100%;background:none;border-left:0;border-right:0;border-bottom:0;font:inherit;color:inherit;text-align:left}
+.row:hover{background:#F6F4FB}.row:first-child{border-top:0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;align-items:start}
+.back{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;padding:0 0 10px}
+#drawer{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:100%;background:#fff;border-left:1px solid var(--line);padding:22px;overflow:auto;transform:translateX(100%);transition:transform .2s;z-index:20;box-shadow:-8px 0 24px #231B3A22}
+#drawer.open{transform:none}
+#drawer dl{display:grid;grid-template-columns:110px 1fr;gap:8px 10px;margin:14px 0}#drawer dt{color:var(--mute);font-size:.9rem}#drawer dd{margin:0}
+.lnk{background:none;border:0;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
+.tg{font:inherit;font-weight:600;min-width:80px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer}
+.tg.yes{background:var(--ok);border-color:var(--ok);color:#fff}.tg.no{background:var(--warn);border-color:var(--warn);color:#fff}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:10px 0}.chips button{font:inherit;padding:8px 14px;border-radius:99px;border:1px solid var(--line);background:#fff;cursor:pointer;white-space:nowrap}.chips .on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.ed{min-width:2600px}.ed td{padding:3px 4px}.ed input{width:100%;min-width:110px;border:1px solid transparent;background:transparent;padding:6px 8px}.ed input:hover,.ed input:focus{border-color:var(--line);background:#fff}
+@media(max-width:700px){.ed{min-width:0}.ed thead{display:none}.ed tr{display:block;border:1px solid var(--line);border-radius:10px;margin:0 0 12px;padding:8px}.ed td{display:flex;gap:8px;align-items:center;border:0;padding:3px 0}.ed td::before{content:attr(data-label);flex:0 0 92px;color:var(--mute);font-size:.82rem}.ed td input{min-width:0}}
+.fl{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.fl label{display:flex;flex-direction:column;font-size:.82rem;color:var(--mute);gap:3px}.fl input,.fl select{min-width:120px}
+.btn.big{font-size:1.1rem;padding:16px 28px}.cbtn{padding:6px 12px;font-size:.9rem;white-space:nowrap}
+.ta{width:100%;resize:none;overflow:hidden;font:inherit;line-height:1.35;padding:6px 8px;border:1px solid transparent;background:transparent;border-radius:8px;color:var(--ink)}.ta:hover,.ta:focus{border-color:var(--line);background:#fff}
+.ed td[data-label=""]::before{display:none}.ed td textarea.ta{min-width:0!important}
+.ov{position:fixed;inset:0;background:#10261F88;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:40}
+.mdl{background:#fff;border-radius:14px;padding:22px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}.mdl label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--mute)}.mdl input,.mdl select,.mdl textarea{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;color:var(--ink);width:100%}
+#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:30}
+#inv{position:absolute;left:-9999px;top:0;width:680px;padding:36px;background:#fff;color:#000;font-family:Arial,sans-serif;font-size:14px}
+#inv table{min-width:0}#inv th,#inv td{border-bottom:1px solid #ccc}
+@media(max-width:700px){.top{padding:12px 16px}.top nav{position:fixed;bottom:0;left:0;right:0;background:var(--brand);justify-content:space-around;padding:6px;z-index:10}.top nav button{padding:10px 6px;font-size:.78rem}main{padding-bottom:90px}
+#drawer{top:auto;width:100%;max-height:85vh;border-left:0;border-radius:16px 16px 0 0;transform:translateY(100%)}#drawer.open{transform:none}}
+</style></head><body>
+<header class="top"><b>Dance UP Studio</b><nav id="nav"></nav></header>
+<main class="page" id="v"></main>
+<aside id="drawer" aria-label="Карточка"></aside><div id="toast"></div><div id="modal"></div><div id="inv"></div>
+<script>
+/* ===== данные (загружаются из Supabase) ===== */
+let T=[],G=[],P=[],K=[],EN=[],A={};
+let TU={},GU={},PU={},KU={},EU={},LS={},ME=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const grow=e=>{e.style.height='auto';e.style.height=(e.scrollHeight+2)+'px'};
+const today=()=>new Date().toISOString().slice(0,10);
+const fmt=s=>s?s.split('-').reverse().join('.'):'—';
+const age=d=>d?Math.max(0,Math.floor((Date.now()-new Date(d))/31557600000)):'';
+const ageOf=k=>k.dobI?age(k.dobI):(/^\d{4}$/.test((k.bdr||'').trim())?new Date().getFullYear()-(+k.bdr.trim()):'');
+const IS_ADMIN=()=>!!ME&&ME.role==='admin';
+const tn=id=>(T.find(t=>t.id==id)||{}).n||'';
+const gById=id=>G.find(x=>x.id==id);
+const kById=id=>K.find(x=>x.id==id);
+const pById=id=>P.find(x=>x.id==id)||null;
+const gn=id=>{const g=gById(id);return g?tn(g.t)+' · '+g.n+(g.season?' ('+g.season+')':''):''};
+const ST={active:'Активен',reserve:'Резерв',left:'Выбыл'};
+const monthRange=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return [new Date(Date.UTC(y,m,1)).toISOString().slice(0,10),new Date(Date.UTC(y,m+1,0)).toISOString().slice(0,10)]};
+const S={tab:'kids',t:null,g:null,gv:'kids',drawer:null,tq:'',tc:'',a1:'',a2:'',ts:'az',pp:100,tp:0,ty:'',tt:0,tf:0,tst:'',pk:0,from:monthRange()[0],to:monthRange()[1],ad:today(),gq:'',cg:false,amt:''};
+function toast(m){const e=$('toast');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',2800)}
+function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:''},o);S.drawer=null;draw()}
+const priceOn=(g,d)=>{const x=gById(g);let p=0;if(x)for(const h of x.ph)if(h.f<=d)p=h.p;return p};
+const curPrice=g=>{let p=0;const t=today();for(const h of g.ph)if(h.f<=t)p=h.p;return p};
+const rowsOf=g=>EN.filter(e=>e.g==g);
+const activeIn=g=>EN.filter(e=>e.g==g&&e.st=='active');
+const enOf=(k,g)=>EN.find(e=>e.k==k&&e.g==g);
+
+/* ===== вкладки ===== */
+const TABS=[['kids','Ученики'],['groups','Группы'],['teachers','Преподаватели'],['pay','Оплаты']];
+const kidRow=k=>`<button class="row" onclick="S.drawer=${k.id};draw()"><span>${esc(k.n)}</span><span class="muted">${esc(EN.filter(e=>e.k==k.id&&e.st=='active').map(e=>(gById(e.g)||{}).n).join(', '))}</span></button>`;
+const gKid=e=>{const k=kById(e.k);return `<div class="row" style="cursor:default"><button class="lnk" style="text-decoration:none;color:inherit;text-align:left" onclick="S.drawer=${k.id};draw()">${esc(k.n)}${e.st!='active'?` <span class="chip due">${ST[e.st]}</span>`:''}</button>${IS_ADMIN()&&e.st=='active'?`<button class="lnk" onclick="rmFromGroup(${e.k},${e.g})">убрать</button>`:''}</div>`};
+
+function view(){const t=S.tab,ad=IS_ADMIN();
+if(t=='kids')return kidsView(ad);
+if(t=='groups'){if(S.g)return groupPage(S.g);return `<h1>Группы</h1>${ad?`<div class="bar"><button class="btn big" onclick="S.cg=!S.cg;draw()">+ Создать группу</button></div>${S.cg?groupForm():''}`:''}<section class="card">${G.map(g=>`<button class="row" onclick="S.g=${g.id};draw()"><span>${esc(tn(g.t))} · ${esc(g.n)}</span><span class="muted">${esc(g.season)} · ${activeIn(g.id).length} уч.</span></button>`).join('')||'<p class="muted">Групп пока нет</p>'}</section>`}
+if(t=='teachers'){if(S.g)return groupPage(S.g);
+if(S.t)return `<section class="card"><button class="back" onclick="S.t=null;draw()">← Все преподаватели</button><h2>${esc(tn(S.t))}</h2>${G.filter(g=>g.t==S.t).map(g=>`<button class="row" onclick="S.g=${g.id};draw()"><span>${esc(g.n)} <span class="muted">${esc(g.season)}</span></span><span class="muted">${activeIn(g.id).length} уч.</span></button>`).join('')||'<p class="muted">Групп нет</p>'}</section>`;
+return `<h1>Преподаватели</h1><div class="cols" style="margin-top:14px">${T.map(x=>`<button class="card row" style="border:1px solid var(--line)" onclick="S.t=${x.id}; draw()"><span><b>${esc(x.n)}</b><br><span class="muted">${G.filter(g=>g.t==x.id).length} групп</span></span><span class="muted">${new Set(EN.filter(e=>e.st=='active'&&(gById(e.g)||{}).t==x.id).map(e=>e.k)).size} уч.</span></button>`).join('')||'<p class="muted">Преподавателей пока нет</p>'}</div>`}
+if(t=='pay')return payView()}
+
+/* ===== вкладка «Ученики»: таблица, одна строка = запись ученика в группе ===== */
+function kidsView(ad){const q=S.tq.toLowerCase(),cq=S.tc.trim().toLowerCase(),a1=S.a1===''?null:+S.a1,a2=S.a2===''?null:+S.a2,ro=ad?'':' readonly';
+const by={};EN.forEach(e=>(by[e.k]=by[e.k]||[]).push(e));let rs=[];K.forEach(k=>(by[k.id]||[null]).forEach(e=>rs.push([k,e])));
+const seasons=[...new Set(EN.map(e=>e.season).filter(Boolean))].sort();
+rs=rs.filter(([k,e])=>{const p=pById(k.pg)||{};
+if(q&&!(k.n+' '+(p.n||'')+' '+(p.ph||'')+' '+k.tel+' '+(p.em||'')+' '+(e?e.note+' '+e.tn:'')).toLowerCase().includes(q))return false;
+if(cq){const c=e?e.cn:'',lead=(c.match(/^\s*(\d+)/)||[])[1]||'';if(/^\d+$/.test(cq)?!lead.startsWith(cq):!c.toLowerCase().includes(cq))return false}
+if(S.tf==-1?e:(S.tf&&(!e||e.g!=S.tf)))return false;if(S.tt&&!(e&&(gById(e.g)||{}).t==S.tt))return false;
+if(S.ty&&(!e||e.season!==S.ty))return false;if(S.tst&&(!e||e.st!==S.tst))return false;
+if(a1!=null||a2!=null){const a=ageOf(k);if(a==='')return false;if(a1!=null&&a<a1)return false;if(a2!=null&&a>a2)return false}return true});
+const ao=k=>ageOf(k)===''?999:ageOf(k),gl=r=>r[1]?gn(r[1].g):'';
+const cmp={az:(a,b)=>a[0].n.localeCompare(b[0].n,'ru'),za:(a,b)=>b[0].n.localeCompare(a[0].n,'ru'),ageup:(a,b)=>ao(a[0])-ao(b[0]),agedown:(a,b)=>(ageOf(b[0])===''?-1:ageOf(b[0]))-(ageOf(a[0])===''?-1:ageOf(a[0])),grp:(a,b)=>gl(a).localeCompare(gl(b),'ru')}[S.ts];rs=rs.slice().sort(cmp);
+const per=S.pp||rs.length||1,pages=Math.max(1,Math.ceil(rs.length/per));S.tp=Math.min(S.tp,pages-1);
+const ta=(k,e,f,w,lb,val,multi)=>`<textarea class="ta" rows="1" style="min-width:${w}px" aria-label="${lb}" onchange="edit(${k.id},${e?e.id:0},'${f}',this.value)" oninput="grow(this)" ${multi?'':`onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"`}${ro}>${esc(val)}</textarea>`,
+dc=(k,e,f,val,lb)=>`<input type="date" value="${esc(val)}" onchange="edit(${k.id},${e?e.id:0},'${f}',this.value)" aria-label="${lb}"${ro}>`,
+opt=(arr,cur)=>arr.map(y=>`<option ${y==cur?'selected':''}>${esc(y)}</option>`).join('');
+return `<h1>Ученики</h1><p class="muted">Всего учеников: ${K.length}, записей в группы: ${EN.length}. ${ad?'Нажмите на ячейку, чтобы изменить значение: оно сохраняется сразу.':''}</p>
+${ad?`<div class="bar"><button class="btn big" onclick="openAdd()">+ Добавить ученика</button></div>`:''}
+${ad&&!K.length?'<section class="card" style="margin-bottom:14px"><p>В базе пока нет учеников. Загрузите CSV-файлы в Supabase (шаг 3 в ИНСТРУКЦИЯ.md) и обновите страницу.</p></section>':''}
+<section class="card"><div class="fl"><label>Поиск<input id="tq" type="search" value="${esc(S.tq)}" placeholder="ФИО, родитель, телефон" oninput="S.tq=this.value;S.tp=0;draw(1)"></label>
+<label>По номеру договора<input id="tc" type="search" value="${esc(S.tc)}" placeholder="например, 680" style="min-width:150px" oninput="S.tc=this.value;S.tp=0;draw(1)"></label>
+<label>Возраст от<input id="a1" inputmode="numeric" value="${esc(S.a1)}" style="min-width:70px;width:70px" oninput="S.a1=this.value.replace(/\D/g,'');S.tp=0;draw(1)"></label><label>до<input id="a2" inputmode="numeric" value="${esc(S.a2)}" style="min-width:70px;width:70px" oninput="S.a2=this.value.replace(/\D/g,'');S.tp=0;draw(1)"></label>
+<label>Сезон<select onchange="S.ty=this.value;S.tp=0;draw()"><option value="">Все</option>${opt(seasons,S.ty)}</select></label>
+<label>Статус<select onchange="S.tst=this.value;S.tp=0;draw()"><option value="">Все</option>${Object.keys(ST).map(s=>`<option value="${s}" ${S.tst==s?'selected':''}>${ST[s]}</option>`).join('')}</select></label>
+<label>Преподаватель<select onchange="S.tt=+this.value;S.tp=0;draw()"><option value="0">Все</option>${T.map(x=>`<option value="${x.id}" ${x.id==S.tt?'selected':''}>${esc(x.n)}</option>`).join('')}</select></label>
+<label>Группа<select onchange="S.tf=+this.value;S.tp=0;draw()"><option value="0">Все</option><option value="-1" ${S.tf==-1?'selected':''}>Без группы</option>${G.map(g=>`<option value="${g.id}" ${g.id==S.tf?'selected':''}>${esc(gn(g.id))}</option>`).join('')}</select></label>
+<label>Сортировка<select onchange="S.ts=this.value;draw()">${[['az','По алфавиту А→Я'],['za','По алфавиту Я→А'],['ageup','Возраст: младшие сначала'],['agedown','Возраст: старшие сначала'],['grp','По группе']].map(o=>`<option value="${o[0]}" ${o[0]==S.ts?'selected':''}>${o[1]}</option>`).join('')}</select></label>
+<label>Показывать<select onchange="S.pp=+this.value;S.tp=0;draw()">${[[50,'50'],[100,'100'],[300,'300'],[0,'Все']].map(o=>`<option value="${o[0]}" ${o[0]==S.pp?'selected':''}>${o[1]}</option>`).join('')}</select></label></div>
+<p class="muted" style="margin-top:12px">Найдено: ${rs.length}${(a1!=null||a2!=null)?' (если возраст неизвестен, строка скрыта)':''}</p>
+<div class="scroll"><table class="ed"><thead><tr><th></th><th>Статус</th><th>ФИО ученика</th><th>Дата рождения</th><th>Возраст</th><th>Телефон ученика</th><th>Родитель</th><th>Телефон родителя</th><th>E-mail родителя</th><th>Преподаватель</th><th>Группа</th><th>Сезон</th><th>№ договора</th><th>Дата договора</th><th>Дата пробного</th><th>Заметка к пробному</th><th>Примечания</th></tr></thead><tbody>${rs.slice(S.tp*per,S.tp*per+per).map(([k,e])=>{const p=pById(k.pg)||{n:'',ph:'',em:''},g=e&&gById(e.g),en=(f,w,lb,val,m)=>e?ta(k,e,f,w,lb,val,m):'<span class="muted">—</span>';
+return `<tr><td data-label=""><button class="btn cbtn" onclick="S.drawer=${k.id};draw()">Карточка</button></td>
+<td data-label="Статус">${e?`<select onchange="edit(${k.id},${e.id},'st',this.value)" aria-label="Статус"${ad?'':' disabled'}>${Object.keys(ST).map(s=>`<option value="${s}" ${e.st==s?'selected':''}>${ST[s]}</option>`).join('')}</select>`:'<span class="muted">—</span>'}</td>
+<td data-label="ФИО">${ta(k,e,'n',230,'ФИО ученика',k.n)}</td>
+<td data-label="Дата рожд.">${dc(k,e,'dobI',k.dobI,'Дата рождения')}${!k.dobI&&k.bdr?ta(k,e,'bdr',120,'Дата рождения (как в таблице)',k.bdr):''}</td>
+<td data-label="Возраст" class="muted">${ageOf(k)}</td>
+<td data-label="Тел. ученика">${ta(k,e,'tel',140,'Телефон ученика',k.tel)}</td>
+<td data-label="Родитель">${ta(k,e,'gn',200,'Родитель',p.n)}</td>
+<td data-label="Тел. родителя">${ta(k,e,'gph',140,'Телефон родителя',p.ph)}</td>
+<td data-label="E-mail">${ta(k,e,'gem',190,'E-mail родителя',p.em)}</td>
+<td data-label="Преподаватель" class="muted">${g?esc(tn(g.t)):'—'}</td>
+<td data-label="Группа" class="muted">${g?esc(g.n):'—'}</td>
+<td data-label="Сезон" class="muted">${e?esc(e.season):'—'}</td>
+<td data-label="№ договора">${en('cn',110,'Номер договора',e?e.cn:'')}</td>
+<td data-label="Дата договора">${e?dc(k,e,'cd',e.cd,'Дата договора'):'<span class="muted">—</span>'}</td>
+<td data-label="Дата пробного">${e?dc(k,e,'td',e.td,'Дата пробного занятия'):'<span class="muted">—</span>'}</td>
+<td data-label="Заметка к пробному">${en('tn',160,'Заметка к пробному',e?e.tn:'',1)}</td>
+<td data-label="Примечания">${en('note',220,'Примечания',e?e.note:'',1)}</td></tr>`}).join('')||'<tr><td colspan="17" class="muted">Никого не нашли: измените поиск или фильтры</td></tr>'}</tbody></table></div>
+<div class="bar"><button class="btn ghost" ${S.tp?'':'disabled'} onclick="S.tp--;draw()">←</button><span class="muted">Стр. ${S.tp+1} из ${pages}</span><button class="btn ghost" ${S.tp<pages-1?'':'disabled'} onclick="S.tp++;draw()">→</button></div></section>`}
+
+/* ===== редактирование ячеек ===== */
+const SF={n:'full_name',dobI:'birth_date',bdr:'birth_date_raw',tel:'phone'},GK={gn:['n','full_name'],gph:['ph','phone'],gem:['em','email']},EF={cn:['cn','contract_number'],cd:['cd','contract_date'],td:['td','trial_date'],tn:['tn','trial_note'],note:['note','notes'],st:['st','status']};
+async function edit(kid,eid,f,val){val=val.trim();const k=kById(kid);if(!k)return;
+if(f in SF){if(f=='n'&&!val){toast('ФИО не может быть пустым');draw(1);return}const old=k[f];k[f]=val;const {error}=await sb.from('students').update({[SF[f]]:val||null}).eq('id',KU[kid]);if(error){k[f]=old;draw();return toast('Не сохранено: '+error.message)}return toast('Сохранено')}
+if(f in GK){const [key,col]=GK[f];let p=pById(k.pg);
+if(!p){if(!val)return;const {data,error}=await sb.from('guardians').insert({[col]:val}).select('id').single();if(error)return toast('Не сохранено: '+error.message);const id=P.reduce((m,x)=>Math.max(m,x.id),0)+1;PU[id]=data.id;p={id,n:'',ph:'',pr:'',em:''};p[key]=val;P.push(p);
+const r=await sb.from('students').update({guardian_id:data.id}).eq('id',KU[kid]);if(r.error)return toast('Не сохранено: '+r.error.message);k.pg=id;draw();return toast('Сохранено')}
+const old=p[key];p[key]=val;const {error}=await sb.from('guardians').update({[col]:val||null}).eq('id',PU[p.id]);if(error){p[key]=old;draw();return toast('Не сохранено: '+error.message)}return toast('Сохранено')}
+if(f in EF){const e=EN.find(x=>x.id==eid);if(!e)return;const [key,col]=EF[f];const old=e[key];e[key]=val;const {error}=await sb.from('enrollments').update({[col]:val||null}).eq('id',e.u);if(error){e[key]=old;draw();return toast('Не сохранено: '+error.message)}if(f=='st')draw();return toast('Сохранено')}}
+
+/* ===== группы ===== */
+const priceBlock=g=>`<div class="bar" style="align-items:end"><label class="muted">Стоимость занятия, BYN<br><input id="gp_${g.id}" inputmode="decimal" value="${g.p||''}" style="width:130px"></label>${g.ph.length?`<label class="muted">Новая цена действует с<br><input id="gd_${g.id}" type="date" value="${today()}"></label>`:''}<button class="btn" onclick="setPrice(${g.id})">Сохранить цену</button></div><p class="muted">${g.ph.length?'История цен: '+g.ph.map(h=>h.p+' BYN с '+fmt(h.f)).join('; ')+'. Прошлые занятия считаются по цене, которая действовала в их день.':'Цена не задана: занятия считаются как 0 BYN. Первая цена действует на все занятия.'}</p>`;
+function groupPage(gid){if(S.gv=='att')return attPage(gid);const g=gById(gid),ad=IS_ADMIN(),es=rowsOf(gid),act=es.filter(e=>e.st=='active'),oth=es.filter(e=>e.st!='active');
+return `<section class="card"><button class="back" onclick="S.g=null;S.gv='kids';S.gq='';draw()">← Назад</button><h2>${esc(gn(gid))}</h2>
+${ad?`<div class="bar"><label class="muted">Расписание<br><input value="${esc(g.s)}" onchange="setG(${gid},'schedule','s',this.value)"></label><label class="muted">Локация<br><input value="${esc(g.loc)}" onchange="setG(${gid},'location','loc',this.value)"></label></div>${priceBlock(g)}`:`<p class="muted">${esc(g.s)} ${esc(g.loc)}</p>`}
+<div class="bar"><button class="btn big" onclick="S.gv='att';draw()">Отметить посещаемость</button>${ad?`<button class="btn ghost" style="color:#B3261E" onclick="delGroup(${gid})">Удалить группу</button>`:''}</div>
+<p class="muted">В группе: ${act.length}</p>${act.map(e=>ad?gKid(e):kidRow(kById(e.k))).join('')||'<p class="muted">В группе пока нет учеников</p>'}
+${oth.length?`<p class="muted" style="margin-top:14px">Резерв и выбывшие: ${oth.length}</p>${oth.map(gKid).join('')}`:''}
+${ad?`<div style="margin-top:14px"><input id="gsq" type="search" value="${esc(S.gq)}" placeholder="Найти ученика, чтобы добавить в группу" style="width:100%" oninput="S.gq=this.value;draw(1)">${addRes(gid)}</div>`:''}</section>`}
+const addRes=gid=>{const q=S.gq.trim().toLowerCase();if(!q)return '';const r=K.filter(k=>!EN.some(e=>e.k==k.id&&e.g==gid&&e.st=='active')&&(k.n+' '+((pById(k.pg)||{}).n||'')).toLowerCase().includes(q)).slice(0,10);return r.length?r.map(k=>`<div class="row" style="cursor:default"><span>${esc(k.n)} <span class="muted">${k.dobI?fmt(k.dobI):esc(k.bdr)}</span></span><button class="btn" style="padding:6px 12px" onclick="addToGroup(${k.id},${gid})">+ Добавить</button></div>`).join(''):'<p class="muted">Никого не нашли</p>'};
+const lastSeason=()=>[...new Set(G.map(g=>g.season).filter(Boolean))].sort().pop()||'';
+const groupForm=()=>`<section class="card" style="margin:14px 0"><h2>Новая группа</h2><div class="fl"><label>Преподаватель<select id="gt">${T.map(t=>`<option value="${t.id}">${esc(t.n)}</option>`).join('')}</select></label><label>Название<input id="gnm" placeholder="например, 7-9"></label><label>Сезон<input id="gse" value="${esc(lastSeason())}" placeholder="например, 26-27" style="min-width:100px"></label><label>Расписание<input id="gs" placeholder="вт/чт 17:20"></label><label>Локация<input id="glc"></label><label>Стоимость занятия, BYN<input id="gpr" inputmode="decimal" style="min-width:110px"></label></div><div class="bar"><button class="btn" onclick="createGroup()">Создать группу</button><button class="lnk" onclick="addTeacher()">+ новый преподаватель</button></div></section>`;
+async function addTeacher(){const n=(prompt('ФИО преподавателя')||'').trim();if(!n)return;const {data,error}=await sb.from('teachers').insert({full_name:n}).select('id').single();if(error)return toast('Не сохранено: '+error.message);const id=T.reduce((m,t)=>Math.max(m,t.id),0)+1;TU[id]=data.id;T.push({id,n});draw();toast('Преподаватель добавлен')}
+async function createGroup(){const t=+$('gt').value,n=$('gnm').value.trim(),se=$('gse').value.trim(),s=$('gs').value.trim(),lc=$('glc').value.trim(),pr=parseFloat(($('gpr').value||'').replace(',','.'));
+if(!t||!n)return toast('Укажите преподавателя и название');if(!se)return toast('Укажите сезон, например 26-27');
+const {data,error}=await sb.from('groups').insert({teacher_id:TU[t],name:n,season:se,schedule:s||null,location:lc||null}).select('id').single();if(error)return toast('Не сохранено: '+error.message);
+const id=G.reduce((m,g)=>Math.max(m,g.id),0)+1;GU[id]=data.id;const g={id,t,n,season:se,s,loc:lc,ph:[],p:0};
+if(pr>=0){const r=await sb.from('group_prices').insert({group_id:data.id,price:pr,valid_from:'2000-01-01'});if(!r.error){g.ph=[{f:'2000-01-01',p:pr}];g.p=pr}}
+G.push(g);S.cg=false;S.g=id;draw();toast('Группа создана: добавьте учеников')}
+async function setG(gid,col,key,v){const g=gById(gid);g[key]=v.trim();const {error}=await sb.from('groups').update({[col]:g[key]||null}).eq('id',GU[gid]);toast(error?'Не сохранено: '+error.message:'Сохранено')}
+async function setPrice(gid){const g=gById(gid),v=($('gp_'+gid).value||'').replace(',','.').trim(),p=parseFloat(v);if(v===''||!(p>=0))return toast('Введите цену числом');
+const d=g.ph.length?($('gd_'+gid).value||today()):'2000-01-01';
+const {error}=await sb.from('group_prices').upsert({group_id:GU[gid],price:p,valid_from:d},{onConflict:'group_id,valid_from'});if(error)return toast('Не сохранено: '+error.message);
+const ex=g.ph.find(h=>h.f==d);if(ex)ex.p=p;else g.ph.push({f:d,p});g.ph.sort((a,b)=>a.f<b.f?-1:1);g.p=curPrice(g);draw();toast('Цена сохранена')}
+async function addToGroup(kid,gid){const g=gById(gid),ex=enOf(kid,gid);
+if(ex){if(ex.st=='active')return toast('Уже в этой группе');const {error}=await sb.from('enrollments').update({status:'active'}).eq('id',ex.u);if(error)return toast('Не сохранено: '+error.message);ex.st='active';draw();return toast('Добавлено в группу')}
+const prim=!EN.some(e=>e.k==kid&&e.st=='active');
+const {data,error}=await sb.from('enrollments').insert({student_id:KU[kid],group_id:GU[gid],season:g.season,status:'active',is_primary:prim}).select('id').single();if(error)return toast('Не сохранено: '+error.message);
+const id=EN.reduce((m,e)=>Math.max(m,e.id),0)+1;EN.push({id,u:data.id,k:kid,g:gid,season:g.season,prim,st:'active',cn:'',cd:'',td:'',tn:'',note:'',ref:''});EU[kid+'|'+gid]=data.id;draw();toast('Добавлено в группу')}
+async function rmFromGroup(kid,gid){const e=enOf(kid,gid);if(!e||!confirm('Убрать ученика из группы? Он получит статус «Выбыл», прошлые отметки сохранятся.'))return;
+const {error}=await sb.from('enrollments').update({status:'left'}).eq('id',e.u);if(error)return toast('Не сохранено: '+error.message);e.st='left';draw();toast('Убран из группы')}
+async function delGroup(gid){const n=activeIn(gid).length;if(!confirm('Удалить группу «'+gn(gid)+'» навсегда? Будут удалены записи учеников в эту группу ('+rowsOf(gid).length+'), отметки посещаемости и цены группы. Сами ученики останутся. Отменить нельзя.'))return;
+let r=await sb.from('enrollments').delete().eq('group_id',GU[gid]);if(r.error)return toast('Не удалено: '+r.error.message);
+r=await sb.from('groups').delete().eq('id',GU[gid]);if(r.error)return toast('Не удалено: '+r.error.message);
+G=G.filter(x=>x.id!=gid);EN=EN.filter(e=>e.g!=gid);Object.keys(A).forEach(x=>{if(x.split('|')[1]==gid)delete A[x]});S.g=null;S.gv='kids';draw();toast('Группа удалена')}
+
+/* ===== посещаемость внутри группы ===== */
+async function saveAtt(g,list){const d=S.ad,prev={};list.forEach(([k,v])=>{const key=k+'|'+g+'|'+d;prev[key]=A[key];A[key]=v});draw();
+try{let l=LS[g+'|'+d];if(!l){const {data,error}=await sb.from('lessons').upsert({group_id:GU[g],lesson_date:d},{onConflict:'group_id,lesson_date'}).select('id').single();if(error)throw error;l=LS[g+'|'+d]=data.id}
+const {error}=await sb.from('attendance').upsert(list.map(([k,v])=>({lesson_id:l,enrollment_id:EU[k+'|'+g],present:!!v})));if(error)throw error}
+catch(e){toast('Не сохранено: '+e.message);for(const key in prev){if(prev[key]===undefined)delete A[key];else A[key]=prev[key]}draw()}}
+const mark=(k,g,v)=>saveAtt(g,[[k,v]]);
+const markAll=(g,v)=>saveAtt(g,activeIn(g).map(e=>[e.k,v]));
+function monthStat(k,g,m){const ds=Object.keys(A).filter(x=>{const [a,b,c]=x.split('|');return a==k&&b==g&&c.startsWith(m)&&A[x]===1}).map(x=>x.split('|')[2]);return [ds.length,+ds.reduce((s,d)=>s+priceOn(g,d),0).toFixed(2)]}
+function attPage(gid){const es=activeIn(gid),m=S.ad.slice(0,7),was=es.filter(e=>A[e.k+'|'+gid+'|'+S.ad]===1).length;
+return `<section class="card"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><button class="back" onclick="S.gv='kids';draw()">← К группе</button><h2>Отметить посещаемость</h2><p class="muted">${esc(gn(gid))}</p></div><label class="muted">Дата занятия<br><input type="date" value="${S.ad}" onchange="S.ad=this.value||today();draw()"></label></div>
+<div class="bar"><button class="btn ghost" onclick="markAll(${gid},1)">Отметить всех</button><button class="btn ghost" onclick="markAll(${gid},0)">Снять все</button><span class="muted">Пришли: ${was} из ${es.length}</span></div>
+${es.map(e=>{const k=kById(e.k),v=A[e.k+'|'+gid+'|'+S.ad]===1,t=monthStat(e.k,gid,m);return `<label class="row" style="cursor:pointer"><span style="display:flex;align-items:center;gap:12px"><input type="checkbox" style="width:24px;height:24px" ${v?'checked':''} onchange="mark(${e.k},${gid},this.checked?1:0)">${esc(k.n)}</span><span class="muted">за месяц: ${t[0]} зан. · ${t[1]} BYN</span></label>`}).join('')||'<p class="muted">В группе нет активных учеников</p>'}</section>`}
+
+/* ===== оплаты ===== */
+function lines(k){const gs=[...new Set(EN.filter(e=>e.k==k.id).map(e=>e.g).concat(Object.keys(A).filter(x=>x.split('|')[0]==k.id).map(x=>+x.split('|')[1])))].filter(g=>gById(g));
+const rows=gs.map(g=>{const ds=Object.keys(A).filter(x=>{const [a,b,c]=x.split('|');return a==k.id&&b==g&&c>=S.from&&c<=S.to&&A[x]===1}).map(x=>x.split('|')[2]),sum=ds.reduce((s,d)=>s+priceOn(g,d),0);return [gn(g),ds.length,ds.length?+(sum/ds.length).toFixed(2):curPrice(gById(g)),+sum.toFixed(2)]}).filter(r=>r[1]>0||true);
+return {rows,total:+rows.reduce((s,r)=>s+r[3],0).toFixed(2)}}
+const payTotal=L=>{const v=parseFloat(String(S.amt).replace(',','.'));return S.amt!==''&&v>=0?v:L.total};
+function payView(){const k=kById(S.pk);if(!k)return '<h1>Оплаты</h1><p class="muted">Нет учеников</p>';const L=lines(k),p=pById(k.pg)||{};
+const sorted=[...K].sort((a,b)=>a.n.localeCompare(b.n,'ru'));
+return `<h1>Оплаты</h1><section class="card"><div class="bar"><select onchange="S.pk=+this.value;S.amt='';draw()" aria-label="Ученик">${sorted.map(x=>`<option value="${x.id}" ${x.id==S.pk?'selected':''}>${esc(x.n)}</option>`).join('')}</select><label>с <input type="date" value="${S.from}" onchange="S.from=this.value;S.amt='';draw()"></label><label>по <input type="date" value="${S.to}" onchange="S.to=this.value;S.amt='';draw()"></label></div>
+<div class="scroll"><table><thead><tr><th>Группа</th><th class="num">Занятий</th><th class="num">Цена</th><th class="num">Сумма</th></tr></thead><tbody>${L.rows.map(r=>`<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td><td class="num">${r[2]} BYN</td><td class="num">${r[3]} BYN</td></tr>`).join('')||'<tr><td colspan="4" class="muted">У ученика нет групп</td></tr>'}<tr><td colspan="3"><b>Рассчитано по посещаемости</b></td><td class="num"><b>${L.total} BYN</b></td></tr></tbody></table></div>
+<div class="bar" style="align-items:end"><label class="muted">Сумма к оплате в чеке, BYN<br><input id="amt" inputmode="decimal" value="${S.amt!==''?esc(S.amt):L.total}" oninput="S.amt=this.value" style="width:150px"></label><button class="btn ghost" onclick="S.amt='';draw()">Вернуть расчётную</button></div>
+<div class="bar"><input id="to" type="email" value="${esc(p.em||'')}" placeholder="E-mail родителя" style="flex:1;min-width:220px"><button class="btn ghost" onclick="pdf(0)">Скачать PDF</button><button class="btn ghost" onclick="mailTo()">Открыть в почте</button><button class="btn" onclick="pdf(1)">Отправить родителю</button></div>${p.em?'':'<p class="muted">У родителя не указан e-mail: введите его выше или впишите в таблице «Ученики».</p>'}</section>`}
+async function pdf(send){const k=kById(S.pk),L=lines(k),to=($('to')||{}).value,total=payTotal(L);
+$('inv').innerHTML=`<h2 style="font-family:Arial">Dance UP Studio — счёт на оплату</h2><p>Ученик: <b>${esc(k.n)}</b><br>Период: ${fmt(S.from)} — ${fmt(S.to)}</p><table style="width:100%;border-collapse:collapse"><tr><th align="left">Группа</th><th>Занятий</th><th>Цена</th><th align="right">Сумма</th></tr>${L.rows.filter(r=>r[1]>0).map(r=>`<tr><td>${esc(r[0])}</td><td align="center">${r[1]}</td><td align="center">${r[2]} BYN</td><td align="right">${r[3]} BYN</td></tr>`).join('')}</table><h3 style="text-align:right">Итого к оплате: ${total} BYN</h3>`;
+const job=html2pdf().set({margin:8,filename:`Оплата_${k.n}_${S.from}_${S.to}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4'}}).from($('inv'));
+if(!send){job.save();return}
+if(!to){toast('Укажите e-mail родителя');return}
+const b64=(await job.outputPdf('datauristring')).split(',')[1];
+const {error}=await sb.functions.invoke('send-invoice',{body:{student_id:KU[k.id]||null,period_from:S.from,period_to:S.to,to_email:to,pdf_base64:b64}});
+toast(error?'Ошибка отправки: '+error.message:'Письмо отправлено на '+to)}
+function mailTo(){const to=($('to')||{}).value||'';pdf(0);location.href='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent('Оплата за занятия')+'&body='+encodeURIComponent('Здравствуйте! Во вложении информация об оплате за занятия. (Прикрепите скачанный PDF-файл.)')}
+
+/* ===== карточка ученика ===== */
+function drawer(){const d=$('drawer'),k=kById(S.drawer);d.classList.toggle('open',!!k);if(!k)return;const ad=IS_ADMIN(),p=pById(k.pg),v=x=>x?esc(x):'<span class="muted">—</span>',row=(l,h)=>`<dt>${l}</dt><dd>${h}</dd>`;
+const es=EN.filter(e=>e.k==k.id);
+d.innerHTML=`<button class="back" onclick="S.drawer=null;draw()">✕ Закрыть</button><h2>${esc(k.n)}</h2><dl>`+row('Дата рождения',k.dobI?fmt(k.dobI)+(k.bdr?` <span class="muted">(${esc(k.bdr)})</span>`:''):v(k.bdr))+row('Возраст',ageOf(k)===''?v(''):ageOf(k))+row('Телефон ученика',v(k.tel))+row('Родитель',v(p&&p.n))+row('Телефон родителя',p?v(p.ph)+(p.pr&&p.pr!==p.ph?` <span class="muted">(${esc(p.pr)})</span>`:''):v(''))+row('E-mail родителя',v(p&&p.em))+`</dl>`
++es.map(e=>{const g=gById(e.g);return g?`<div class="card" style="margin:10px 0;padding:12px"><dl style="margin:0">${row('Группа',`<button class="lnk" onclick="go('groups',{g:${e.g}})">${esc(g.n)}</button>, <button class="lnk" onclick="go('teachers',{t:${g.t},g:null})">${esc(tn(g.t))}</button>`)}${row('Статус',ST[e.st]||esc(e.st))}${row('Сезон',v(e.season))}${row('Договор',v(e.cn)+(e.cd?' от '+fmt(e.cd):''))}${row('Пробное',v(e.td?fmt(e.td):'')+(e.tn?` <span class="muted">(${esc(e.tn)})</span>`:''))}${row('Примечания',v(e.note))}${row('Источник',`<span class="muted">${esc(e.ref||'—')}</span>`)}</dl>${ad&&e.st=='active'?`<button class="lnk" onclick="rmFromGroup(${k.id},${e.g})">убрать из группы</button>`:''}</div>`:''}).join('')
++(ad?`<select style="width:100%;margin:10px 0" aria-label="Добавить в группу" onchange="if(this.value)addToGroup(${k.id},+this.value)"><option value="">+ Добавить в группу…</option>${G.filter(x=>!EN.some(e=>e.k==k.id&&e.g==x.id&&e.st=='active')).map(x=>`<option value="${x.id}">${esc(gn(x.id))}</option>`).join('')}</select><button class="btn" style="width:100%" onclick="go('pay',{pk:${k.id},amt:''})">Оплата и PDF</button>`:'')}
+
+/* ===== добавление ученика ===== */
+function openAdd(){const f=(id,lb,ty,ph)=>`<label>${lb}<input id="${id}" type="${ty||'text'}" ${ph?`placeholder="${ph}"`:''}></label>`;
+$('modal').innerHTML=`<div class="ov" onclick="if(event.target===this)closeAdd()"><div class="mdl" role="dialog" aria-modal="true" aria-label="Новый ученик"><h2>Новый ученик</h2>
+${f('m_n','ФИО ученика *')}${f('m_dob','Дата рождения','date')}${f('m_tel','Телефон ученика (для взрослых групп)')}${f('m_gn','Родитель (ФИО)')}${f('m_gp','Телефон родителя','text','+375...')}${f('m_ge','E-mail родителя','email')}
+<label>Группа<select id="m_g"><option value="">Без группы</option>${G.map(g=>`<option value="${g.id}">${esc(gn(g.id))}</option>`).join('')}</select></label>
+<label>Статус в группе<select id="m_st">${Object.keys(ST).map(s=>`<option value="${s}">${ST[s]}</option>`).join('')}</select></label>
+${f('m_cn','Номер договора')}${f('m_cd','Дата договора','date')}${f('m_td','Дата пробного занятия','date')}${f('m_tn','Заметка к пробному')}<label>Примечания<textarea id="m_note" rows="3"></textarea></label>
+<div class="bar" style="margin:6px 0 0"><button class="btn big" onclick="saveKid()">Сохранить</button><button class="btn ghost" onclick="closeAdd()">Отмена</button></div></div></div>`;$('m_n').focus&&$('m_n').focus()}
+const closeAdd=()=>{$('modal').innerHTML=''};
+document.addEventListener&&document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAdd()});
+async function saveKid(){const v=id=>($(id).value||'').trim(),n=v('m_n');if(!n)return toast('Введите ФИО');
+if(K.some(k=>k.n.trim().toLowerCase()==n.toLowerCase())&&!confirm('Ученик с таким ФИО уже есть. Всё равно добавить?'))return;
+let guardian=null;if(v('m_gn')||v('m_gp')||v('m_ge')){const r=await sb.from('guardians').insert({full_name:v('m_gn')||null,phone:v('m_gp')||null,email:v('m_ge')||null}).select('id').single();if(r.error)return toast('Не сохранено: '+r.error.message);guardian=r.data.id}
+const {data,error}=await sb.from('students').insert({full_name:n,birth_date:v('m_dob')||null,phone:v('m_tel')||null,guardian_id:guardian}).select('id').single();if(error)return toast('Не сохранено: '+error.message);
+let pg=0;if(guardian){pg=P.reduce((m,x)=>Math.max(m,x.id),0)+1;PU[pg]=guardian;P.push({id:pg,n:v('m_gn'),ph:v('m_gp'),pr:'',em:v('m_ge')})}
+const id=K.reduce((m,k)=>Math.max(m,k.id),0)+1;KU[id]=data.id;K.push({id,n,dobI:v('m_dob'),bdr:'',tel:v('m_tel'),pg});
+const gid=+$('m_g').value||0;if(gid){const g=gById(gid),prim=true;const r=await sb.from('enrollments').insert({student_id:data.id,group_id:GU[gid],season:g.season,status:v('m_st')||'active',is_primary:prim,contract_number:v('m_cn')||null,contract_date:v('m_cd')||null,trial_date:v('m_td')||null,trial_note:v('m_tn')||null,notes:v('m_note')||null}).select('id').single();
+if(r.error)toast('Ученик добавлен, но в группу не записан: '+r.error.message);else{const eid=EN.reduce((m,e)=>Math.max(m,e.id),0)+1;EN.push({id:eid,u:r.data.id,k:id,g:gid,season:g.season,prim,st:v('m_st')||'active',cn:v('m_cn'),cd:v('m_cd'),td:v('m_td'),tn:v('m_tn'),note:v('m_note'),ref:''});EU[id+'|'+gid]=r.data.id}}
+closeAdd();Object.assign(S,{tab:'kids',tq:n,tc:'',a1:'',a2:'',ty:'',tst:'',tt:0,tf:0,tp:0});draw();toast('Ученик добавлен')}
+
+/* ===== вход, загрузка, отрисовка ===== */
+const SETUP=`<section class="card" style="max-width:560px;margin:40px auto"><h2>Сайт не подключён к базе данных</h2><p>Здесь нет тестовых данных: все ученики, группы и преподаватели хранятся в вашем Supabase. Чтобы начать работу, создайте файл <b>config.js</b> рядом с index.html (образец: config.example.js) и впишите адрес проекта и ключ anon. Шаги описаны в ИНСТРУКЦИЯ.md.</p></section>`;
+const LOGIN=`<section class="card" style="max-width:360px;margin:40px auto"><h2>Вход</h2><div class="bar" style="flex-direction:column;align-items:stretch"><input id="le" type="email" placeholder="E-mail" autocomplete="username"><input id="lp" type="password" placeholder="Пароль" autocomplete="current-password"><button class="btn" onclick="login()">Войти</button></div></section>`;
+function draw(keep){if(!window.sb){$('nav').innerHTML='';$('v').innerHTML=SETUP;return}if(!ME){$('nav').innerHTML='';$('v').innerHTML=LOGIN;drawer();return}
+const a=document.activeElement,id=a&&a.id;$('nav').innerHTML=TABS.filter(t=>IS_ADMIN()||t[0]!='pay').map(t=>`<button class="${t[0]==S.tab?'on':''}" onclick="go('${t[0]}',{t:null,g:null})">${t[1]}</button>`).join('')+'<button onclick="logout()">Выйти</button>';
+$('v').innerHTML=view();drawer();if(document.querySelectorAll)document.querySelectorAll('textarea.ta').forEach(grow);
+if(keep&&id){const e=$(id);if(e){e.focus();try{e.setSelectionRange(99,99)}catch(_){}}}}
+async function all(t,sel,ord){let o=[],f=0;for(;;){const {data,error}=await sb.from(t).select(sel).order(ord).range(f,f+999);if(error)throw error;o=o.concat(data);if(data.length<1000)return o;f+=1000}}
+async function load(){
+const [t,g,gp,pa,s,e,at]=await Promise.all([all('teachers','id,full_name','id'),all('groups','id,name,teacher_id,season,location,schedule','id'),all('group_prices','group_id,price,valid_from','id'),all('guardians','id,full_name,phone,phone_raw,email','id'),all('students','id,full_name,birth_date,birth_date_raw,phone,guardian_id','id'),all('enrollments','id,student_id,group_id,season,is_primary,status,contract_number,contract_date,trial_date,trial_note,notes,source_ref','id'),all('attendance','present,enrollments(student_id,group_id),lessons(id,group_id,lesson_date)','lesson_id')]);
+const ti={},gi={},pi={},ki={};TU={};GU={};PU={};KU={};EU={};LS={};A={};
+T=t.map((x,i)=>(ti[x.id]=i+1,TU[i+1]=x.id,{id:i+1,n:x.full_name}));
+const ph={};gp.sort((a,b)=>a.valid_from<b.valid_from?-1:1).forEach(x=>(ph[x.group_id]=ph[x.group_id]||[]).push({f:x.valid_from,p:+x.price}));
+G=g.filter(x=>IS_ADMIN()||x.teacher_id==ME.teacher_id).map((x,i)=>{gi[x.id]=i+1;GU[i+1]=x.id;const h=ph[x.id]||[],o={id:i+1,t:ti[x.teacher_id],n:x.name,season:x.season||'',s:x.schedule||'',loc:x.location||'',ph:h,p:0};o.p=curPrice(o);return o});
+P=pa.map((x,i)=>(pi[x.id]=i+1,PU[i+1]=x.id,{id:i+1,n:x.full_name||'',ph:x.phone||'',pr:x.phone_raw||'',em:x.email||''}));
+K=s.map((x,i)=>(ki[x.id]=i+1,KU[i+1]=x.id,{id:i+1,n:x.full_name,dobI:x.birth_date||'',bdr:x.birth_date_raw||'',tel:x.phone||'',pg:pi[x.guardian_id]||0}));
+EN=[];e.forEach((x,i)=>{const gg=gi[x.group_id],kk=ki[x.student_id];if(!gg||!kk)return;const o={id:i+1,u:x.id,k:kk,g:gg,season:x.season||'',prim:x.is_primary,st:x.status,cn:x.contract_number||'',cd:x.contract_date||'',td:x.trial_date||'',tn:x.trial_note||'',note:x.notes||'',ref:x.source_ref||''};EN.push(o);EU[kk+'|'+gg]=x.id});
+at.forEach(x=>{const en=x.enrollments,l=x.lessons;if(!en||!l)return;const k=ki[en.student_id],gg=gi[en.group_id];if(k&&gg){A[k+'|'+gg+'|'+l.lesson_date]=x.present?1:0;LS[gg+'|'+l.lesson_date]=l.id}});
+if(!IS_ADMIN()){const mine=new Set(EN.map(e=>e.k));K=K.filter(k=>mine.has(k.id))}}
+async function start(){const {data:{session}}=await sb.auth.getSession();if(!session){draw();return}
+const {data}=await sb.from('profiles').select('role,teacher_id').eq('id',session.user.id).maybeSingle();
+if(!data){toast('Профиль не создан: обратитесь к администратору');await sb.auth.signOut();draw();return}
+ME=data;try{await load()}catch(e){toast('Ошибка загрузки: '+e.message)}
+S.ad=today();S.pk=(K[0]||{}).id||0;S.tab=IS_ADMIN()?'kids':'groups';draw()}
+async function login(){const {error}=await sb.auth.signInWithPassword({email:$('le').value,password:$('lp').value});if(error)return toast('Неверный e-mail или пароль');start()}
+async function logout(){await sb.auth.signOut();ME=null;draw()}
+window.sb?start():draw();
+
+</script></body></html>
