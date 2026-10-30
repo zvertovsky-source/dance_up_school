@@ -76,7 +76,7 @@ const ST={active:'Активен',reserve:'Резерв',left:'Выбыл'};
 const monthRange=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return [new Date(Date.UTC(y,m,1)).toISOString().slice(0,10),new Date(Date.UTC(y,m+1,0)).toISOString().slice(0,10)]};
 const S={tab:'kids',t:null,g:null,gv:'kids',drawer:null,tq:'',tc:'',a1:'',a2:'',ts:'az',pp:100,tp:0,ty:'',tt:0,tf:0,tst:'',pk:0,from:monthRange()[0],to:monthRange()[1],ad:today(),gq:'',cg:false,amt:''};
 function toast(m){const e=$('toast');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',2800)}
-function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:''},o);S.drawer=null;drawer()}
+function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:''},o);S.drawer=null;draw()}
 const priceOn=(g,d)=>{const x=gById(g);let p=0;if(x)for(const h of x.ph)if(h.f<=d)p=h.p;return p};
 const curPrice=g=>{let p=0;const t=today();for(const h of g.ph)if(h.f<=t)p=h.p;return p};
 const rowsOf=g=>EN.filter(e=>e.g==g);
