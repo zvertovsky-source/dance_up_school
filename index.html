@@ -33,14 +33,12 @@
 .ov{position:fixed;inset:0;background:#10261F88;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto;z-index:40}
 .mdl{background:#fff;border-radius:14px;padding:22px;width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}.mdl label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--mute)}.mdl input,.mdl select,.mdl textarea{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;color:var(--ink);width:100%}
 #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:30}
-#inv{position:absolute;left:-9999px;top:0;width:680px;padding:36px;background:#fff;color:#000;font-family:Arial,sans-serif;font-size:14px}
-#inv table{min-width:0}#inv th,#inv td{border-bottom:1px solid #ccc}
 @media(max-width:700px){.top{padding:12px 16px}.top nav{position:fixed;bottom:0;left:0;right:0;background:var(--brand);justify-content:space-around;padding:6px;z-index:10}.top nav button{padding:10px 6px;font-size:.78rem}main{padding-bottom:90px}
 #drawer{top:auto;width:100%;max-height:85vh;border-left:0;border-radius:16px 16px 0 0;transform:translateY(100%)}#drawer.open{transform:none}}
 </style></head><body>
 <header class="top"><b>Dance UP Studio</b><nav id="nav"></nav></header>
 <main class="page" id="v"></main>
-<div id="dback" onclick="S.drawer=null;drawer()"></div><aside id="drawer" aria-label="Карточка"></aside><div id="toast"></div><div id="modal"></div><div id="inv"></div>
+<div id="dback" onclick="S.drawer=null;drawer()"></div><aside id="drawer" aria-label="Карточка"></aside><div id="toast"></div><div id="modal"></div>
 <script>
 /* ===== данные (загружаются из Supabase) ===== */
 let T=[],G=[],P=[],K=[],EN=[],A={};
@@ -74,9 +72,9 @@ let _pdfP;const loadPdf=()=>window.html2pdf?Promise.resolve():(_pdfP=_pdfP||new 
 const gn=id=>{const g=gById(id);return g?tn(g.t)+' · '+g.n+(g.season?' ('+g.season+')':''):''};
 const ST={active:'Активен',reserve:'Резерв',left:'Выбыл'};
 const monthRange=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return [new Date(Date.UTC(y,m,1)).toISOString().slice(0,10),new Date(Date.UTC(y,m+1,0)).toISOString().slice(0,10)]};
-const S={tab:'kids',t:null,g:null,gv:'kids',drawer:null,tq:'',tc:'',a1:'',a2:'',ts:'az',pp:100,tp:0,ty:'',tt:0,tf:0,tst:'',pk:0,from:monthRange()[0],to:monthRange()[1],ad:today(),gq:'',cg:false,amt:''};
+const S={tab:'kids',t:null,g:null,gv:'kids',drawer:null,tq:'',tc:'',a1:'',a2:'',ts:'az',pp:100,tp:0,ty:'',tt:0,tf:0,tst:'',pk:0,from:monthRange()[0],to:monthRange()[1],ad:today(),gq:'',cg:false,amt:'',gfq:'',ga:false,pq:''};
 function toast(m){const e=$('toast');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',2800)}
-function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:''},o);S.drawer=null;draw()}
+function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:'',gfq:'',ga:false,pq:''},o);S.drawer=null;draw()}
 const priceOn=(g,d)=>{const x=gById(g);let p=0;if(x)for(const h of x.ph)if(h.f<=d)p=h.p;return p};
 const curPrice=g=>{let p=0;const t=today();for(const h of g.ph)if(h.f<=t)p=h.p;return p};
 const rowsOf=g=>EN.filter(e=>e.g==g);
@@ -90,18 +88,35 @@ const gKid=e=>{const k=kById(e.k);return `<div class="row" style="cursor:default
 
 function view(){const t=S.tab,ad=IS_ADMIN();
 if(t=='kids')return kidsView(ad);
-if(t=='groups'){if(S.g)return groupPage(S.g);return `<h1>Группы</h1>${ad?`<div class="bar"><button class="btn big" onclick="S.cg=!S.cg;draw()">+ Создать группу</button></div>${S.cg?groupForm():''}`:''}<section class="card">${G.map(g=>`<button class="row" onclick="S.g=${g.id};draw()"><span>${esc(tn(g.t))} · ${esc(g.n)}</span><span class="muted">${esc(g.season)} · ${activeIn(g.id).length} уч.</span></button>`).join('')||'<p class="muted">Групп пока нет</p>'}</section>`}
+if(t=='groups'){if(S.g)return groupPage(S.g);return `<h1>Группы</h1>${ad?`<div class="bar"><button class="btn big" onclick="S.cg=!S.cg;draw()">+ Создать группу</button></div>${S.cg?groupForm():''}`:''}<section class="card"><div class="bar"><input id="gfq" type="search" value="${esc(S.gfq)}" placeholder="Поиск: название группы или преподаватель" autocomplete="off" style="flex:1;min-width:240px" oninput="S.gfq=this.value;gr()"></div><div id="gres">${groupsRes()}</div></section>`}
 if(t=='teachers'){if(S.g)return groupPage(S.g);
 if(S.t)return `<section class="card"><button class="back" onclick="S.t=null;draw()">← Все преподаватели</button><h2>${esc(tn(S.t))}</h2>${G.filter(g=>g.t==S.t).map(g=>`<button class="row" onclick="S.g=${g.id};draw()"><span>${esc(g.n)} <span class="muted">${esc(g.season)}</span></span><span class="muted">${activeIn(g.id).length} уч.</span></button>`).join('')||'<p class="muted">Групп нет</p>'}</section>`;
 return `<h1>Преподаватели</h1><div class="cols" style="margin-top:14px">${T.map(x=>`<button class="card row" style="border:1px solid var(--line)" onclick="S.t=${x.id}; draw()"><span><b>${esc(x.n)}</b><br><span class="muted">${G.filter(g=>g.t==x.id).length} групп</span></span><span class="muted">${new Set(EN.filter(e=>e.st=='active'&&(gById(e.g)||{}).t==x.id).map(e=>e.k)).size} уч.</span></button>`).join('')||'<p class="muted">Преподавателей пока нет</p>'}</div>`}
 if(t=='pay')return payView()}
 
+
+/* ===== список групп: поиск и «только сегодняшние» ===== */
+const DAYS=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+const DRX=/(?:^|[^а-яё])(пн|пон[а-яё]*|вт|втор[а-яё]*|ср|сред[а-яё]*|чт|чет[а-яё]*|пт|пят[а-яё]*|сб|суб[а-яё]*|вс|воск[а-яё]*)(?![а-яё])/g;
+const DIDX=w=>w[0]=='п'?(w[1]=='н'||w[1]=='о'?1:5):w[0]=='в'?(w[1]=='т'?2:0):w[0]=='с'?(w[1]=='р'?3:6):w[0]=='ч'?4:-1;
+const schedDays=t=>{const r=new Set();for(const m of String(t||'').toLowerCase().matchAll(DRX)){const i=DIDX(m[1]);if(i>=0)r.add(i)}return r};
+const schedTime=t=>{const m=String(t||'').match(/(\d{1,2})[:.](\d{2})/);return m?+m[1]*60+ +m[2]:9999};
+function groupsRes(){if(!G.length)return '<p class="muted">Групп пока нет</p>';
+const w=S.gfq.toLowerCase().split(/\s+/).filter(Boolean),td=new Date().getDay();let l,info;
+if(w.length){l=G.filter(g=>{const h=(tn(g.t)+' '+g.n+' '+g.season+' '+g.s+' '+g.loc).toLowerCase();return w.every(x=>h.includes(x))});info='Найдено групп: '+l.length}
+else if(S.ga){l=G.slice();info='Все группы: '+l.length}
+else{l=G.filter(g=>{const d=schedDays(g.s);return !d.size||d.has(td)});info='Сегодня, '+DAYS[td]+': '+l.length+(G.length>l.length?' · остальные ('+(G.length-l.length)+') найдите через поиск':'')}
+if(w.length||S.ga)l.sort((a,b)=>COL.compare(tn(a.t),tn(b.t))||COL.compare(a.n,b.n));else l.sort((a,b)=>schedTime(a.s)-schedTime(b.s)||COL.compare(tn(a.t),tn(b.t)));
+return `<div class="pgrow"><p class="muted">${esc(info)}</p>${w.length?'':`<button class="lnk" onclick="S.ga=!S.ga;gr()">${S.ga?'Только сегодняшние':'Показать все группы'}</button>`}</div>`
++(l.map(g=>`<button class="row" onclick="S.g=${g.id};draw()"><span>${esc(tn(g.t))} · ${esc(g.n)}${g.s?`<br><span class="muted">${esc(g.s)}</span>`:''}</span><span class="muted">${esc(g.season)} · ${activeIn(g.id).length} уч.</span></button>`).join('')||'<p class="muted">'+(w.length?'Ничего не нашли':'На сегодня групп нет. Остальные — через поиск или «Показать все группы».')+'</p>')}
+const gr=()=>{const e=$('gres');if(e)e.innerHTML=groupsRes()};
+
 /* ===== вкладка «Ученики»: таблица, одна строка = запись ученика в группе ===== */
-function kidsView(ad){const q=S.tq.toLowerCase(),cq=S.tc.trim().toLowerCase(),a1=S.a1===''?null:+S.a1,a2=S.a2===''?null:+S.a2,ro=ad?'':' readonly';
-const AG=new Map(K.map(k=>[k.id,ageOf(k)]));const by={};EN.forEach(e=>(by[e.k]=by[e.k]||[]).push(e));let rs=[];K.forEach(k=>(by[k.id]||[null]).forEach(e=>rs.push([k,e])));
+function kidsView(ad,only){const qw=S.tq.toLowerCase().split(/\s+/).filter(Boolean),cq=S.tc.trim().toLowerCase(),a1=S.a1===''?null:+S.a1,a2=S.a2===''?null:+S.a2,ro=ad?'':' readonly';
+const _a=new Map(),AG={get:id=>{let v=_a.get(id);if(v===undefined){v=ageOf(kById(id));_a.set(id,v)}return v}};const by={};EN.forEach(e=>(by[e.k]=by[e.k]||[]).push(e));let rs=[];K.forEach(k=>(by[k.id]||[null]).forEach(e=>rs.push([k,e])));
 const seasons=[...new Set(EN.map(e=>e.season).filter(Boolean))].sort();
 rs=rs.filter(([k,e])=>{const p=pById(k.pg)||{};
-if(q&&!(k.n+' '+(p.n||'')+' '+(p.ph||'')+' '+k.tel+' '+(p.em||'')+' '+(e?e.note+' '+e.tn:'')).toLowerCase().includes(q))return false;
+if(qw.length){const h=(k.n+' '+(p.n||'')+' '+(p.ph||'')+' '+k.tel+' '+(p.em||'')+' '+(e?e.note+' '+e.tn:'')).toLowerCase();for(const x of qw)if(!h.includes(x))return false}
 if(cq){const c=e?e.cn:'',lead=(c.match(/^\s*(\d+)/)||[])[1]||'';if(/^\d+$/.test(cq)?!lead.startsWith(cq):!c.toLowerCase().includes(cq))return false}
 if(S.tf==-1?e:(S.tf&&(!e||e.g!=S.tf)))return false;if(S.tt&&!(e&&(gById(e.g)||{}).t==S.tt))return false;
 if(S.ty&&(!e||e.season!==S.ty))return false;if(S.tst&&(!e||e.st!==S.tst))return false;
@@ -109,23 +124,11 @@ if(a1!=null||a2!=null){const a=AG.get(k.id);if(a==='')return false;if(a1!=null&&
 const ao=k=>AG.get(k.id)===''?999:AG.get(k.id),glc=new Map(),gl=r=>{if(!r[1])return '';let v=glc.get(r[1].g);if(v==null){v=gn(r[1].g);glc.set(r[1].g,v)}return v};
 const cmp={az:(a,b)=>COL.compare(a[0].n,b[0].n),za:(a,b)=>COL.compare(b[0].n,a[0].n),ageup:(a,b)=>ao(a[0])-ao(b[0]),agedown:(a,b)=>(AG.get(b[0].id)===''?-1:AG.get(b[0].id))-(AG.get(a[0].id)===''?-1:AG.get(a[0].id)),grp:(a,b)=>COL.compare(gl(a),gl(b))}[S.ts];rs=rs.slice().sort(cmp);
 const per=S.pp||rs.length||1,pages=Math.max(1,Math.ceil(rs.length/per));S.tp=Math.min(S.tp,pages-1);
-const pager=`<div class="pg"><button class="btn ghost" ${S.tp?'':'disabled'} onclick="S.tp--;draw()">←</button><span class="muted">Стр. ${S.tp+1} из ${pages}</span><button class="btn ghost" ${S.tp<pages-1?'':'disabled'} onclick="S.tp++;draw()">→</button></div>`;
+const pager=`<div class="pg"><button class="btn ghost" ${S.tp?'':'disabled'} onclick="S.tp--;kr()">←</button><span class="muted">Стр. ${S.tp+1} из ${pages}</span><button class="btn ghost" ${S.tp<pages-1?'':'disabled'} onclick="S.tp++;kr()">→</button></div>`;
 const ta=(k,e,f,w,lb,val,multi)=>`<textarea class="ta" rows="1" style="min-width:${w}px" aria-label="${lb}" onchange="edit(${k.id},${e?e.id:0},'${f}',this.value)" oninput="grow(this)" ${multi?'':`onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"`}${ro}>${esc(val)}</textarea>`,
 dc=(k,e,f,val,lb)=>`<input type="date" value="${esc(val)}" onchange="edit(${k.id},${e?e.id:0},'${f}',this.value)" aria-label="${lb}"${ro}>`,
 opt=(arr,cur)=>arr.map(y=>`<option ${y==cur?'selected':''}>${esc(y)}</option>`).join('');
-return `<h1>Ученики</h1><p class="muted">Всего учеников: ${K.length}, записей в группы: ${EN.length}. ${ad?'Нажмите на ячейку, чтобы изменить значение: оно сохраняется сразу.':''}</p>
-${ad?`<div class="bar"><button class="btn big" onclick="openAdd()">+ Добавить ученика</button></div>`:''}
-${ad&&!K.length?'<section class="card" style="margin-bottom:14px"><p>В базе пока нет учеников. Загрузите CSV-файлы в Supabase (шаг 3 в ИНСТРУКЦИЯ.md) и обновите страницу.</p></section>':''}
-<section class="card"><div class="fl"><label>Поиск<input id="tq" type="search" value="${esc(S.tq)}" placeholder="ФИО, родитель, телефон" oninput="S.tq=this.value;S.tp=0;drawD()"></label>
-<label>По номеру договора<input id="tc" type="search" value="${esc(S.tc)}" placeholder="например, 680" style="min-width:150px" oninput="S.tc=this.value;S.tp=0;drawD()"></label>
-<label>Возраст от<input id="a1" inputmode="numeric" value="${esc(S.a1)}" style="min-width:70px;width:70px" oninput="S.a1=this.value.replace(/\D/g,'');S.tp=0;drawD()"></label><label>до<input id="a2" inputmode="numeric" value="${esc(S.a2)}" style="min-width:70px;width:70px" oninput="S.a2=this.value.replace(/\D/g,'');S.tp=0;drawD()"></label>
-<label>Сезон<select onchange="S.ty=this.value;S.tp=0;draw()"><option value="">Все</option>${opt(seasons,S.ty)}</select></label>
-<label>Статус<select onchange="S.tst=this.value;S.tp=0;draw()"><option value="">Все</option>${Object.keys(ST).map(s=>`<option value="${s}" ${S.tst==s?'selected':''}>${ST[s]}</option>`).join('')}</select></label>
-<label>Преподаватель<select onchange="S.tt=+this.value;S.tp=0;draw()"><option value="0">Все</option>${T.map(x=>`<option value="${x.id}" ${x.id==S.tt?'selected':''}>${esc(x.n)}</option>`).join('')}</select></label>
-<label>Группа<select onchange="S.tf=+this.value;S.tp=0;draw()"><option value="0">Все</option><option value="-1" ${S.tf==-1?'selected':''}>Без группы</option>${G.map(g=>`<option value="${g.id}" ${g.id==S.tf?'selected':''}>${esc(gn(g.id))}</option>`).join('')}</select></label>
-<label>Сортировка<select onchange="S.ts=this.value;draw()">${[['az','По алфавиту А→Я'],['za','По алфавиту Я→А'],['ageup','Возраст: младшие сначала'],['agedown','Возраст: старшие сначала'],['grp','По группе']].map(o=>`<option value="${o[0]}" ${o[0]==S.ts?'selected':''}>${o[1]}</option>`).join('')}</select></label>
-<label>Показывать<select onchange="S.pp=+this.value;S.tp=0;draw()">${[[50,'50'],[100,'100'],[300,'300'],[0,'Все']].map(o=>`<option value="${o[0]}" ${o[0]==S.pp?'selected':''}>${o[1]}</option>`).join('')}</select></label></div>
-<div class="pgrow"><p class="muted">Найдено: ${rs.length}${(a1!=null||a2!=null)?' (если возраст неизвестен, строка скрыта)':''}</p>${pager}</div>
+const res=`<div class="pgrow"><p class="muted">Найдено: ${rs.length}${(a1!=null||a2!=null)?' (если возраст неизвестен, строка скрыта)':''}</p>${pager}</div>
 <div class="scroll"><table class="ed"><thead><tr><th></th><th>Статус</th><th>ФИО ученика</th><th>Дата рождения</th><th>Возраст</th><th>Телефон ученика</th><th>Родитель</th><th>Телефон родителя</th><th>E-mail родителя</th><th>Преподаватель</th><th>Группа</th><th>Сезон</th><th>№ договора</th><th>Дата договора</th><th>Дата пробного</th><th>Заметка к пробному</th><th>Примечания</th></tr></thead><tbody>${rs.slice(S.tp*per,S.tp*per+per).map(([k,e])=>{const p=pById(k.pg)||{n:'',ph:'',em:''},g=e&&gById(e.g),en=(f,w,lb,val,m)=>e?ta(k,e,f,w,lb,val,m):'<span class="muted">—</span>';
 return `<tr><td data-label=""><button class="btn cbtn" onclick="openK(${k.id})">Карточка</button></td>
 <td data-label="Статус">${e?`<select onchange="edit(${k.id},${e.id},'st',this.value)" aria-label="Статус"${ad?'':' disabled'}>${Object.keys(ST).map(s=>`<option value="${s}" ${e.st==s?'selected':''}>${ST[s]}</option>`).join('')}</select>`:'<span class="muted">—</span>'}</td>
@@ -144,7 +147,23 @@ return `<tr><td data-label=""><button class="btn cbtn" onclick="openK(${k.id})">
 <td data-label="Дата пробного">${e?dc(k,e,'td',e.td,'Дата пробного занятия'):'<span class="muted">—</span>'}</td>
 <td data-label="Заметка к пробному">${en('tn',160,'Заметка к пробному',e?e.tn:'',1)}</td>
 <td data-label="Примечания">${en('note',220,'Примечания',e?e.note:'',1)}</td></tr>`}).join('')||'<tr><td colspan="17" class="muted">Никого не нашли: измените поиск или фильтры</td></tr>'}</tbody></table></div>
-<div class="pgrow" style="justify-content:flex-end">${pager}</div></section>`}
+<div class="pgrow" style="justify-content:flex-end">${pager}</div>`;
+if(only)return res;
+return `<h1>Ученики</h1><p class="muted">Всего учеников: ${K.length}, записей в группы: ${EN.length}. ${ad?'Нажмите на ячейку, чтобы изменить значение: оно сохраняется сразу.':''}</p>
+${ad?`<div class="bar"><button class="btn big" onclick="openAdd()">+ Добавить ученика</button></div>`:''}
+${ad&&!K.length?'<section class="card" style="margin-bottom:14px"><p>В базе пока нет учеников. Загрузите CSV-файлы в Supabase (шаг 3 в ИНСТРУКЦИЯ.md) и обновите страницу.</p></section>':''}
+<section class="card"><div class="fl"><label>Поиск<input id="tq" type="search" value="${esc(S.tq)}" placeholder="ФИО, родитель, телефон" oninput="S.tq=this.value;S.tp=0;kd()"></label>
+<label>По номеру договора<input id="tc" type="search" value="${esc(S.tc)}" placeholder="например, 680" style="min-width:150px" oninput="S.tc=this.value;S.tp=0;kd()"></label>
+<label>Возраст от<input id="a1" inputmode="numeric" value="${esc(S.a1)}" style="min-width:70px;width:70px" oninput="S.a1=this.value.replace(/\D/g,'');S.tp=0;kd()"></label><label>до<input id="a2" inputmode="numeric" value="${esc(S.a2)}" style="min-width:70px;width:70px" oninput="S.a2=this.value.replace(/\D/g,'');S.tp=0;kd()"></label>
+<label>Сезон<select onchange="S.ty=this.value;S.tp=0;kr()"><option value="">Все</option>${opt(seasons,S.ty)}</select></label>
+<label>Статус<select onchange="S.tst=this.value;S.tp=0;kr()"><option value="">Все</option>${Object.keys(ST).map(s=>`<option value="${s}" ${S.tst==s?'selected':''}>${ST[s]}</option>`).join('')}</select></label>
+<label>Преподаватель<select onchange="S.tt=+this.value;S.tp=0;kr()"><option value="0">Все</option>${T.map(x=>`<option value="${x.id}" ${x.id==S.tt?'selected':''}>${esc(x.n)}</option>`).join('')}</select></label>
+<label>Группа<select onchange="S.tf=+this.value;S.tp=0;kr()"><option value="0">Все</option><option value="-1" ${S.tf==-1?'selected':''}>Без группы</option>${G.map(g=>`<option value="${g.id}" ${g.id==S.tf?'selected':''}>${esc(gn(g.id))}</option>`).join('')}</select></label>
+<label>Сортировка<select onchange="S.ts=this.value;kr()">${[['az','По алфавиту А→Я'],['za','По алфавиту Я→А'],['ageup','Возраст: младшие сначала'],['agedown','Возраст: старшие сначала'],['grp','По группе']].map(o=>`<option value="${o[0]}" ${o[0]==S.ts?'selected':''}>${o[1]}</option>`).join('')}</select></label>
+<label>Показывать<select onchange="S.pp=+this.value;S.tp=0;kr()">${[[50,'50'],[100,'100'],[300,'300'],[0,'Все']].map(o=>`<option value="${o[0]}" ${o[0]==S.pp?'selected':''}>${o[1]}</option>`).join('')}</select></label></div>
+<div id="kres">${res}</div></section>`}
+let _kt;const kd=()=>{clearTimeout(_kt);_kt=setTimeout(kr,120)};
+const kr=()=>{clearTimeout(_kt);const e=$('kres');if(!e)return draw(1);e.innerHTML=kidsView(IS_ADMIN(),1);growAll()};
 
 /* ===== редактирование ячеек ===== */
 const SF={n:'full_name',dobI:'birth_date',bdr:'birth_date_raw',tel:'phone'},GK={gn:['n','full_name'],gph:['ph','phone'],gem:['em','email']},EF={cn:['cn','contract_number'],cd:['cd','contract_date'],td:['td','trial_date'],tn:['tn','trial_note'],note:['note','notes'],st:['st','status']};
@@ -207,24 +226,33 @@ ${es.map(e=>{const k=kById(e.k),v=A[e.k+'|'+gid+'|'+S.ad]===1,t=monthStat(e.k,gi
 
 /* ===== оплаты ===== */
 function lines(k){const X=getAX(),gs=[...new Set(EN.filter(e=>e.k==k.id).map(e=>e.g).concat([...(X.bk.get(+k.id)||[])]))].filter(g=>gById(g));
-const rows=gs.map(g=>{const ds=[],mm=X.kg.get(k.id+'|'+g);if(mm)for(const [d,v] of mm)if(v===1&&d>=S.from&&d<=S.to)ds.push(d);const sum=ds.reduce((s,d)=>s+priceOn(g,d),0);return [gn(g),ds.length,ds.length?+(sum/ds.length).toFixed(2):curPrice(gById(g)),+sum.toFixed(2)]}).filter(r=>r[1]>0||true);
+const rows=gs.map(g=>{const ds=[],mm=X.kg.get(k.id+'|'+g);if(mm)for(const [d,v] of mm)if(v===1&&d>=S.from&&d<=S.to)ds.push(d);const sum=ds.reduce((s,d)=>s+priceOn(g,d),0);return [gn(g),ds.length,ds.length?+(sum/ds.length).toFixed(2):curPrice(gById(g)),+sum.toFixed(2),ds.sort()]}).filter(r=>r[1]>0||true);
 return {rows,total:+rows.reduce((s,r)=>s+r[3],0).toFixed(2)}}
 const payTotal=L=>{const v=parseFloat(String(S.amt).replace(',','.'));return S.amt!==''&&v>=0?v:L.total};
-function payView(){if(!ATT_OK)return '<h1>Оплаты</h1>'+attWait();const k=kById(S.pk);if(!k)return '<h1>Оплаты</h1><p class="muted">Нет учеников</p>';const L=lines(k),p=pById(k.pg)||{};
-const sorted=[...K].sort((a,b)=>COL.compare(a.n,b.n));
-return `<h1>Оплаты</h1><section class="card"><div class="bar"><select onchange="S.pk=+this.value;S.amt='';draw()" aria-label="Ученик">${sorted.map(x=>`<option value="${x.id}" ${x.id==S.pk?'selected':''}>${esc(x.n)}</option>`).join('')}</select><label>с <input type="date" value="${S.from}" onchange="S.from=this.value;S.amt='';draw()"></label><label>по <input type="date" value="${S.to}" onchange="S.to=this.value;S.amt='';draw()"></label></div>
+const pqMatches=()=>{const w=S.pq.toLowerCase().split(/\s+/).filter(Boolean);if(!w.length)return [];return K.filter(x=>{const h=(x.n+' '+((pById(x.pg)||{}).n||'')).toLowerCase();return w.every(t=>h.includes(t))}).sort((a,b)=>COL.compare(a.n,b.n))};
+const pqList=()=>{if(!S.pq.trim())return '';const r=pqMatches();if(!r.length)return '<p class="muted">Никого не нашли</p>';
+return '<div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin:6px 0">'+r.slice(0,30).map(x=>`<button class="row" onclick="pickKid(${x.id})"><span>${esc(x.n)}</span><span class="muted">${esc(EN.filter(e=>e.k==x.id&&e.st=='active').map(e=>(gById(e.g)||{}).n).join(', '))}</span></button>`).join('')+(r.length>30?`<p class="muted" style="padding:6px 10px;margin:0">Показаны первые 30 из ${r.length}: уточните запрос</p>`:'')+'</div>'};
+const pqr=()=>{const e=$('pqres');if(e)e.innerHTML=pqList()};
+const pickKid=id=>{S.pk=id;S.amt='';S.pq='';draw()};
+const pqPick=()=>{const r=pqMatches();if(r.length)pickKid(r[0].id)};
+function payView(){if(!ATT_OK)return '<h1>Оплаты</h1>'+attWait();const k=kById(S.pk);if(!k)return '<h1>Оплаты</h1><p class="muted">Нет учеников</p>';const L=lines(k);
+return `<h1>Оплаты</h1><section class="card"><div class="bar"><input id="pq" type="search" value="${esc(S.pq)}" placeholder="Найти ученика: ФИО или родитель" autocomplete="off" aria-label="Поиск ученика" style="flex:1;min-width:240px" oninput="S.pq=this.value;pqr()" onkeydown="if(event.key==='Enter')pqPick()"><label>с <input type="date" value="${S.from}" onchange="S.from=this.value;S.amt='';draw()"></label><label>по <input type="date" value="${S.to}" onchange="S.to=this.value;S.amt='';draw()"></label></div>
+<div id="pqres">${pqList()}</div>
+<p style="margin:10px 0"><span class="muted">Ученик:</span> <b>${esc(k.n)}</b></p>
 <div class="scroll"><table><thead><tr><th>Группа</th><th class="num">Занятий</th><th class="num">Цена</th><th class="num">Сумма</th></tr></thead><tbody>${L.rows.map(r=>`<tr><td>${esc(r[0])}</td><td class="num">${r[1]}</td><td class="num">${r[2]} BYN</td><td class="num">${r[3]} BYN</td></tr>`).join('')||'<tr><td colspan="4" class="muted">У ученика нет групп</td></tr>'}<tr><td colspan="3"><b>Рассчитано по посещаемости</b></td><td class="num"><b>${L.total} BYN</b></td></tr></tbody></table></div>
-<div class="bar" style="align-items:end"><label class="muted">Сумма к оплате в чеке, BYN<br><input id="amt" inputmode="decimal" value="${S.amt!==''?esc(S.amt):L.total}" oninput="S.amt=this.value" style="width:150px"></label><button class="btn ghost" onclick="S.amt='';draw()">Вернуть расчётную</button></div>
-<div class="bar"><input id="to" type="email" value="${esc(p.em||'')}" placeholder="E-mail родителя" style="flex:1;min-width:220px"><button class="btn ghost" onclick="pdf(0)">Скачать PDF</button><button class="btn ghost" onclick="mailTo()">Открыть в почте</button><button class="btn" onclick="pdf(1)">Отправить родителю</button></div>${p.em?'':'<p class="muted">У родителя не указан e-mail: введите его выше или впишите в таблице «Ученики».</p>'}</section>`}
-async function pdf(send){try{await loadPdf()}catch(e){return toast(e.message)}const k=kById(S.pk),L=lines(k),to=($('to')||{}).value,total=payTotal(L);
-$('inv').innerHTML=`<h2 style="font-family:Arial">Dance UP Studio — счёт на оплату</h2><p>Ученик: <b>${esc(k.n)}</b><br>Период: ${fmt(S.from)} — ${fmt(S.to)}</p><table style="width:100%;border-collapse:collapse"><tr><th align="left">Группа</th><th>Занятий</th><th>Цена</th><th align="right">Сумма</th></tr>${L.rows.filter(r=>r[1]>0).map(r=>`<tr><td>${esc(r[0])}</td><td align="center">${r[1]}</td><td align="center">${r[2]} BYN</td><td align="right">${r[3]} BYN</td></tr>`).join('')}</table><h3 style="text-align:right">Итого к оплате: ${total} BYN</h3>`;
-const job=html2pdf().set({margin:8,filename:`Оплата_${k.n}_${S.from}_${S.to}.pdf`,html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4'}}).from($('inv'));
-if(!send){job.save();return}
-if(!to){toast('Укажите e-mail родителя');return}
-const b64=(await job.outputPdf('datauristring')).split(',')[1];
-const {error}=await sb.functions.invoke('send-invoice',{body:{student_id:KU[k.id]||null,period_from:S.from,period_to:S.to,to_email:to,pdf_base64:b64}});
-toast(error?'Ошибка отправки: '+error.message:'Письмо отправлено на '+to)}
-function mailTo(){const to=($('to')||{}).value||'';pdf(0);location.href='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent('Оплата за занятия')+'&body='+encodeURIComponent('Здравствуйте! Во вложении информация об оплате за занятия. (Прикрепите скачанный PDF-файл.)')}
+<div class="bar" style="align-items:end"><label class="muted">Сумма к оплате в чеке, BYN<br><input id="amt" inputmode="decimal" value="${S.amt!==''?esc(S.amt):L.total}" oninput="S.amt=this.value" style="width:150px"></label><button class="btn" onclick="pdf()">Скачать PDF</button></div></section>`}
+async function pdf(){const k=kById(S.pk);if(!k)return;try{await loadPdf()}catch(e){return toast(e.message)}
+const L=lines(k),p=pById(k.pg)||{},total=payTotal(L),rows=L.rows.filter(r=>r[1]>0),cnt=rows.reduce((s,r)=>s+r[1],0);
+const c='padding:7px 8px;border-bottom:1px solid #ccc;',h='padding:7px 8px;border-bottom:2px solid #333;',ln=(a,b)=>b?`<div style="margin:2px 0"><span style="color:#555">${a}:</span> <b>${esc(b)}</b></div>`:'';
+const el=document.createElement('div');el.style.cssText='width:680px;padding:36px;background:#fff;color:#000;font-family:Arial,sans-serif;font-size:14px;line-height:1.4;box-sizing:border-box';
+el.innerHTML=`<div style="font-size:22px;font-weight:bold">Dance UP Studio</div><div style="font-size:16px;margin:2px 0 18px">Счёт на оплату занятий</div>`
++ln('Ученик',k.n)+ln('Дата рождения',k.dobI?fmt(k.dobI):k.bdr)+ln('Телефон ученика',k.tel)+ln('Родитель',p.n)+ln('Телефон родителя',p.ph)+ln('E-mail родителя',p.em)+ln('Период',fmt(S.from)+' — '+fmt(S.to))+ln('Дата формирования',fmt(today()))
++`<table style="width:100%;min-width:0;border-collapse:collapse;margin-top:18px"><thead><tr><th style="${h}text-align:left">Группа</th><th style="${h}text-align:center">Занятий</th><th style="${h}text-align:center">Цена</th><th style="${h}text-align:right">Сумма</th></tr></thead><tbody>`
++(rows.map(r=>`<tr><td style="${c}">${esc(r[0])}</td><td style="${c}text-align:center">${r[1]}</td><td style="${c}text-align:center">${r[2]} BYN</td><td style="${c}text-align:right">${r[3]} BYN</td></tr><tr><td colspan="4" style="${c}font-size:12px;color:#555">Даты занятий: ${r[4].map(fmt).join(', ')}</td></tr>`).join('')||`<tr><td colspan="4" style="${c}color:#555">За выбранный период посещённых занятий нет</td></tr>`)
++`</tbody></table><div style="margin-top:18px;text-align:right"><div>Всего занятий: <b>${cnt}</b></div><div>Рассчитано по посещаемости: <b>${L.total} BYN</b></div>${total!==L.total?'<div style="color:#555">Сумма скорректирована вручную</div>':''}<div style="font-size:20px;font-weight:bold;margin-top:8px">Итого к оплате: ${total} BYN</div></div>`;
+const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-10000px;top:0';wrap.appendChild(el);document.body.appendChild(wrap);
+try{await html2pdf().set({margin:8,filename:`Оплата_${k.n}_${S.from}_${S.to}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,scrollX:0,scrollY:0,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4'},pagebreak:{avoid:'tr'}}).from(el).save();toast('PDF сохранён')}
+catch(e){toast('Не удалось создать PDF: '+((e&&e.message)||e))}finally{wrap.remove()}}
 
 /* ===== карточка ученика ===== */
 function drawer(){const d=$('drawer'),k=kById(S.drawer);d.classList.toggle('open',!!k);$('dback').classList.toggle('open',!!k);if(!k)return;const ad=IS_ADMIN(),p=pById(k.pg),v=x=>x?esc(x):'<span class="muted">—</span>',row=(l,h)=>`<dt>${l}</dt><dd>${h}</dd>`;
