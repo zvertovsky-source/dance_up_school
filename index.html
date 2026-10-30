@@ -250,8 +250,8 @@ el.innerHTML=`<div style="font-size:22px;font-weight:bold">Dance UP Studio</div>
 +`<table style="width:100%;min-width:0;border-collapse:collapse;margin-top:18px"><thead><tr><th style="${h}text-align:left">Группа</th><th style="${h}text-align:center">Занятий</th><th style="${h}text-align:center">Цена</th><th style="${h}text-align:right">Сумма</th></tr></thead><tbody>`
 +(rows.map(r=>`<tr><td style="${c}">${esc(r[0])}</td><td style="${c}text-align:center">${r[1]}</td><td style="${c}text-align:center">${r[2]} BYN</td><td style="${c}text-align:right">${r[3]} BYN</td></tr><tr><td colspan="4" style="${c}font-size:12px;color:#555">Даты занятий: ${r[4].map(fmt).join(', ')}</td></tr>`).join('')||`<tr><td colspan="4" style="${c}color:#555">За выбранный период посещённых занятий нет</td></tr>`)
 +`</tbody></table><div style="margin-top:18px;text-align:right"><div>Всего занятий: <b>${cnt}</b></div><div>Рассчитано по посещаемости: <b>${L.total} BYN</b></div>${total!==L.total?'<div style="color:#555">Сумма скорректирована вручную</div>':''}<div style="font-size:20px;font-weight:bold;margin-top:8px">Итого к оплате: ${total} BYN</div></div>`;
-const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-10000px;top:0';wrap.appendChild(el);document.body.appendChild(wrap);
-try{await html2pdf().set({margin:8,filename:`Оплата_${k.n}_${S.from}_${S.to}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,scrollX:0,scrollY:0,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4'},pagebreak:{avoid:'tr'}}).from(el).save();toast('PDF сохранён')}
+const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:0;top:0;z-index:-1;width:680px;background:#fff';wrap.appendChild(el);document.body.appendChild(wrap);
+try{await html2pdf().set({margin:8,filename:`Оплата_${k.n}_${S.from}_${S.to}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,scrollX:0,scrollY:0,windowWidth:760,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4'},pagebreak:{avoid:'tr'}}).from(el).save();toast('PDF сохранён')}
 catch(e){toast('Не удалось создать PDF: '+((e&&e.message)||e))}finally{wrap.remove()}}
 
 /* ===== карточка ученика ===== */
