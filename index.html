@@ -74,7 +74,7 @@ const ST={active:'Активен',reserve:'Резерв',left:'Выбыл'};
 const monthRange=()=>{const d=new Date(),y=d.getFullYear(),m=d.getMonth();return [new Date(Date.UTC(y,m,1)).toISOString().slice(0,10),new Date(Date.UTC(y,m+1,0)).toISOString().slice(0,10)]};
 const S={tab:'kids',t:null,g:null,gv:'kids',drawer:null,tq:'',tc:'',a1:'',a2:'',ts:'az',pp:100,tp:0,ty:'',tt:0,tf:0,tst:'',pk:0,from:monthRange()[0],to:monthRange()[1],ad:today(),gq:'',cg:false,amt:'',gfq:'',ga:false,pq:''};
 function toast(m){const e=$('toast');e.textContent=m;e.style.display='block';setTimeout(()=>e.style.display='none',2800)}
-function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:'',gfq:'',ga:false,pq:''},o);S.drawer=null;draw()}
+function go(tab,o={}){Object.assign(S,{tab,gv:'kids',gq:'',gfq:'',ga:false,pq:'',gd:null},o);S.drawer=null;draw()}
 const priceOn=(g,d)=>{const x=gById(g);let p=0;if(x)for(const h of x.ph)if(h.f<=d)p=h.p;return p};
 const curPrice=g=>{let p=0;const t=today();for(const h of g.ph)if(h.f<=t)p=h.p;return p};
 const rowsOf=g=>EN.filter(e=>e.g==g);
@@ -97,6 +97,8 @@ if(t=='pay')return payView()}
 
 /* ===== список групп: поиск и «только сегодняшние» ===== */
 const DAYS=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+const slotTxt=(d,t)=>{if(!d)return '';const x=new Date(d+'T12:00:00'),w=DAYS[x.getDay()];return d.slice(8)+'.'+d.slice(5,7)+' '+w[0].toUpperCase()+w.slice(1)+(t?' '+t:'')};
+const parseSlots=t=>{const r=[],y=new Date().getFullYear();for(const m of String(t||'').matchAll(/(\d{2})\.(\d{2})\s+[А-Яа-яЁё]+\s+(\d{1,2}:\d{2})/g))r.push({d:y+'-'+m[2]+'-'+m[1],t:m[3].padStart(5,'0')});return r};
 const DRX=/(?:^|[^а-яё])(пн|пон[а-яё]*|вт|втор[а-яё]*|ср|сред[а-яё]*|чт|чет[а-яё]*|пт|пят[а-яё]*|сб|суб[а-яё]*|вс|воск[а-яё]*)(?![а-яё])/g;
 const DIDX=w=>w[0]=='п'?(w[1]=='н'||w[1]=='о'?1:5):w[0]=='в'?(w[1]=='т'?2:0):w[0]=='с'?(w[1]=='р'?3:6):w[0]=='ч'?4:-1;
 const schedDays=t=>{const r=new Set();for(const m of String(t||'').toLowerCase().matchAll(DRX)){const i=DIDX(m[1]);if(i>=0)r.add(i)}return r};
@@ -176,29 +178,33 @@ const old=p[key];p[key]=val;const {error}=await sb.from('guardians').update({[co
 if(f in EF){const e=EN.find(x=>x.id==eid);if(!e)return;const [key,col]=EF[f];const old=e[key];e[key]=val;const {error}=await sb.from('enrollments').update({[col]:val||null}).eq('id',e.u);if(error){e[key]=old;draw();return toast('Не сохранено: '+error.message)}if(f=='st')draw();return toast('Сохранено')}}
 
 /* ===== группы ===== */
-const priceBlock=g=>`<div class="bar" style="align-items:end"><label class="muted">Стоимость занятия, BYN<br><input id="gp_${g.id}" inputmode="decimal" value="${g.p||''}" style="width:130px"></label>${g.ph.length?`<label class="muted">Новая цена действует с<br><input id="gd_${g.id}" type="date" value="${today()}"></label>`:''}<button class="btn" onclick="setPrice(${g.id})">Сохранить цену</button></div><p class="muted">${g.ph.length?'История цен: '+g.ph.map(h=>h.p+' BYN с '+fmt(h.f)).join('; ')+'. Прошлые занятия считаются по цене, которая действовала в их день.':'Цена не задана: занятия считаются как 0 BYN. Первая цена действует на все занятия.'}</p>`;
+const priceBlock=g=>`<div class="bar" style="align-items:end"><label class="muted">Стоимость занятия, BYN<br><input id="gp_${g.id}" inputmode="decimal" value="${esc(S.gd.p)}" oninput="S.gd.p=this.value" style="width:130px"></label>${g.ph.length?`<label class="muted">Новая цена действует с<br><input id="gd_${g.id}" type="date" value="${S.gd.pd}" onchange="S.gd.pd=this.value||today()"></label>`:''}</div><p class="muted">${g.ph.length?'История цен: '+g.ph.map(h=>h.p+' BYN с '+fmt(h.f)).join('; ')+'. Прошлые занятия считаются по цене, которая действовала в их день.':'Цена не задана: занятия считаются как 0 BYN. Первая цена действует на все занятия.'}</p>`;
+const slotRows=()=>S.gd.sl.map((x,i)=>`<div class="bar" style="align-items:end"><label class="muted">Дата<br><input type="date" value="${x.d}" onchange="S.gd.sl[${i}].d=this.value;draw()"></label><label class="muted">Время<br><input type="time" value="${x.t}" onchange="S.gd.sl[${i}].t=this.value;draw()"></label><b>${esc(slotTxt(x.d,x.t))}</b>${S.gd.sl.length>1?`<button class="lnk" onclick="S.gd.sl.splice(${i},1);draw()">убрать</button>`:''}</div>`).join('');
+function gForm(g){if(!S.gd||S.gd.id!=g.id)S.gd={id:g.id,sl:parseSlots(g.s),loc:g.loc,p:g.p||'',pd:today()};if(!S.gd.sl.length)S.gd.sl=[{d:'',t:''}];
+return `<p class="muted">Расписание сейчас: ${esc(g.s||'—')}</p>${slotRows()}<div class="bar"><button class="lnk" onclick="S.gd.sl.push({d:'',t:''});draw()">+ ещё день</button></div><div class="bar"><label class="muted">Локация<br><input value="${esc(S.gd.loc)}" oninput="S.gd.loc=this.value"></label></div>${priceBlock(g)}<div class="bar"><button class="btn" onclick="saveGroup(${g.id})">Сохранить</button></div>`}
 function groupPage(gid){if(S.gv=='att')return attPage(gid);const g=gById(gid),ad=IS_ADMIN(),es=rowsOf(gid),act=es.filter(e=>e.st=='active'),oth=es.filter(e=>e.st!='active');
-return `<section class="card"><button class="back" onclick="S.g=null;S.gv='kids';S.gq='';draw()">← Назад</button><h2>${esc(gn(gid))}</h2>
-${ad?`<div class="bar"><label class="muted">Расписание<br><input value="${esc(g.s)}" onchange="setG(${gid},'schedule','s',this.value)"></label><label class="muted">Локация<br><input value="${esc(g.loc)}" onchange="setG(${gid},'location','loc',this.value)"></label></div>${priceBlock(g)}`:`<p class="muted">${esc(g.s)} ${esc(g.loc)}</p>`}
+return `<section class="card"><button class="back" onclick="S.g=null;S.gd=null;S.gv='kids';S.gq='';draw()">← Назад</button><h2>${esc(gn(gid))}</h2>
+${ad?`${gForm(g)}`:`<p class="muted">${esc(g.s)} ${esc(g.loc)}</p>`}
 <div class="bar"><button class="btn big" onclick="S.gv='att';draw()">Отметить посещаемость</button>${ad?`<button class="btn ghost" style="color:#B3261E" onclick="delGroup(${gid})">Удалить группу</button>`:''}</div>
 <p class="muted">В группе: ${act.length}</p>${act.map(e=>ad?gKid(e):kidRow(kById(e.k))).join('')||'<p class="muted">В группе пока нет учеников</p>'}
 ${oth.length?`<p class="muted" style="margin-top:14px">Резерв и выбывшие: ${oth.length}</p>${oth.map(gKid).join('')}`:''}
 ${ad?`<div style="margin-top:14px"><input id="gsq" type="search" value="${esc(S.gq)}" placeholder="Найти ученика, чтобы добавить в группу" style="width:100%" oninput="S.gq=this.value;drawD()">${addRes(gid)}</div>`:''}</section>`}
 const addRes=gid=>{const q=S.gq.trim().toLowerCase();if(!q)return '';const r=K.filter(k=>!EN.some(e=>e.k==k.id&&e.g==gid&&e.st=='active')&&(k.n+' '+((pById(k.pg)||{}).n||'')).toLowerCase().includes(q)).slice(0,10);return r.length?r.map(k=>`<div class="row" style="cursor:default"><span>${esc(k.n)} <span class="muted">${k.dobI?fmt(k.dobI):esc(k.bdr)}</span></span><button class="btn" style="padding:6px 12px" onclick="addToGroup(${k.id},${gid})">+ Добавить</button></div>`).join(''):'<p class="muted">Никого не нашли</p>'};
 const lastSeason=()=>[...new Set(G.map(g=>g.season).filter(Boolean))].sort().pop()||'';
-const groupForm=()=>`<section class="card" style="margin:14px 0"><h2>Новая группа</h2><div class="fl"><label>Преподаватель<select id="gt">${T.map(t=>`<option value="${t.id}">${esc(t.n)}</option>`).join('')}</select></label><label>Название<input id="gnm" placeholder="например, 7-9"></label><label>Сезон<input id="gse" value="${esc(lastSeason())}" placeholder="например, 26-27" style="min-width:100px"></label><label>Расписание<input id="gs" placeholder="вт/чт 17:20"></label><label>Локация<input id="glc"></label><label>Стоимость занятия, BYN<input id="gpr" inputmode="decimal" style="min-width:110px"></label></div><div class="bar"><button class="btn" onclick="createGroup()">Создать группу</button><button class="lnk" onclick="addTeacher()">+ новый преподаватель</button></div></section>`;
+const groupForm=()=>`<section class="card" style="margin:14px 0"><h2>Новая группа</h2><div class="fl"><label>Преподаватель<select id="gt">${T.map(t=>`<option value="${t.id}">${esc(t.n)}</option>`).join('')}</select></label><label>Название<input id="gnm" placeholder="например, 7-9"></label><label>Сезон<input id="gse" value="${esc(lastSeason())}" placeholder="например, 26-27" style="min-width:100px"></label><label>Дата<input id="gsd" type="date"></label><label>Время<input id="gst" type="time"></label><label>Локация<input id="glc"></label><label>Стоимость занятия, BYN<input id="gpr" inputmode="decimal" style="min-width:110px"></label></div><div class="bar"><button class="btn" onclick="createGroup()">Создать группу</button><button class="lnk" onclick="addTeacher()">+ новый преподаватель</button></div></section>`;
 async function addTeacher(){const n=(prompt('ФИО преподавателя')||'').trim();if(!n)return;const {data,error}=await sb.from('teachers').insert({full_name:n}).select('id').single();if(error)return toast('Не сохранено: '+error.message);const id=T.reduce((m,t)=>Math.max(m,t.id),0)+1;TU[id]=data.id;T.push({id,n});draw();toast('Преподаватель добавлен')}
-async function createGroup(){const t=+$('gt').value,n=$('gnm').value.trim(),se=$('gse').value.trim(),s=$('gs').value.trim(),lc=$('glc').value.trim(),pr=parseFloat(($('gpr').value||'').replace(',','.'));
-if(!t||!n)return toast('Укажите преподавателя и название');if(!se)return toast('Укажите сезон, например 26-27');
+async function createGroup(){const t=+$('gt').value,n=$('gnm').value.trim(),se=$('gse').value.trim(),sd=$('gsd').value,stm=$('gst').value,lc=$('glc').value.trim(),pr=parseFloat(($('gpr').value||'').replace(',','.'));
+if(!t||!n)return toast('Укажите преподавателя и название');if(!se)return toast('Укажите сезон, например 26-27');if(sd&&!stm)return toast('Укажите время');const s=slotTxt(sd,stm);
 const {data,error}=await sb.from('groups').insert({teacher_id:TU[t],name:n,season:se,schedule:s||null,location:lc||null}).select('id').single();if(error)return toast('Не сохранено: '+error.message);
 const id=G.reduce((m,g)=>Math.max(m,g.id),0)+1;GU[id]=data.id;const g={id,t,n,season:se,s,loc:lc,ph:[],p:0};
 if(pr>=0){const r=await sb.from('group_prices').insert({group_id:data.id,price:pr,valid_from:'2000-01-01'});if(!r.error){g.ph=[{f:'2000-01-01',p:pr}];g.p=pr}}
 G.push(g);S.cg=false;S.g=id;draw();toast('Группа создана: добавьте учеников')}
-async function setG(gid,col,key,v){const g=gById(gid);g[key]=v.trim();const {error}=await sb.from('groups').update({[col]:g[key]||null}).eq('id',GU[gid]);toast(error?'Не сохранено: '+error.message:'Сохранено')}
-async function setPrice(gid){const g=gById(gid),v=($('gp_'+gid).value||'').replace(',','.').trim(),p=parseFloat(v);if(v===''||!(p>=0))return toast('Введите цену числом');
-const d=g.ph.length?($('gd_'+gid).value||today()):'2000-01-01';
-const {error}=await sb.from('group_prices').upsert({group_id:GU[gid],price:p,valid_from:d},{onConflict:'group_id,valid_from'});if(error)return toast('Не сохранено: '+error.message);
-const ex=g.ph.find(h=>h.f==d);if(ex)ex.p=p;else g.ph.push({f:d,p});g.ph.sort((a,b)=>a.f<b.f?-1:1);g.p=curPrice(g);draw();toast('Цена сохранена')}
+async function saveGroup(gid){const g=gById(gid),d=S.gd;if(!d||d.id!=gid)return;const sl=d.sl.filter(x=>x.d);if(sl.some(x=>!x.t))return toast('Укажите время');
+const sch=sl.length?sl.map(x=>slotTxt(x.d,x.t)).join(', '):g.s,loc=d.loc.trim(),v=String(d.p).replace(',','.').trim(),p=parseFloat(v);
+if(v!==''&&!(p>=0))return toast('Введите цену числом');
+let r=await sb.from('groups').update({schedule:sch||null,location:loc||null}).eq('id',GU[gid]);if(r.error)return toast('Не сохранено: '+r.error.message);g.s=sch;g.loc=loc;
+if(v!==''&&p!==g.p){const dt=g.ph.length?(d.pd||today()):'2000-01-01';r=await sb.from('group_prices').upsert({group_id:GU[gid],price:p,valid_from:dt},{onConflict:'group_id,valid_from'});if(r.error)return toast('Расписание сохранено, цена нет: '+r.error.message);const ex=g.ph.find(h=>h.f==dt);if(ex)ex.p=p;else g.ph.push({f:dt,p});g.ph.sort((a,b)=>a.f<b.f?-1:1);g.p=curPrice(g)}
+S.gd=null;draw();toast('Сохранено')}
 async function addToGroup(kid,gid){const g=gById(gid),ex=enOf(kid,gid);
 if(ex){if(ex.st=='active')return toast('Уже в этой группе');const {error}=await sb.from('enrollments').update({status:'active'}).eq('id',ex.u);if(error)return toast('Не сохранено: '+error.message);ex.st='active';draw();return toast('Добавлено в группу')}
 const prim=!EN.some(e=>e.k==kid&&e.st=='active');
@@ -250,8 +256,8 @@ el.innerHTML=`<div style="font-size:22px;font-weight:bold">Dance UP Studio</div>
 +`<table style="width:100%;min-width:0;border-collapse:collapse;margin-top:18px"><thead><tr><th style="${h}text-align:left">Группа</th><th style="${h}text-align:center">Занятий</th><th style="${h}text-align:center">Цена</th><th style="${h}text-align:right">Сумма</th></tr></thead><tbody>`
 +(rows.map(r=>`<tr><td style="${c}">${esc(r[0])}</td><td style="${c}text-align:center">${r[1]}</td><td style="${c}text-align:center">${r[2]} BYN</td><td style="${c}text-align:right">${r[3]} BYN</td></tr><tr><td colspan="4" style="${c}font-size:12px;color:#555">Даты занятий: ${r[4].map(fmt).join(', ')}</td></tr>`).join('')||`<tr><td colspan="4" style="${c}color:#555">За выбранный период посещённых занятий нет</td></tr>`)
 +`</tbody></table><div style="margin-top:18px;text-align:right"><div>Всего занятий: <b>${cnt}</b></div><div>Рассчитано по посещаемости: <b>${L.total} BYN</b></div>${total!==L.total?'<div style="color:#555">Сумма скорректирована вручную</div>':''}<div style="font-size:20px;font-weight:bold;margin-top:8px">Итого к оплате: ${total} BYN</div></div>`;
-const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:0;top:0;z-index:-1;width:680px;background:#fff';wrap.appendChild(el);document.body.appendChild(wrap);
-try{await html2pdf().set({margin:8,filename:`Оплата_${k.n}_${S.from}_${S.to}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,scrollX:0,scrollY:0,windowWidth:760,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4'},pagebreak:{avoid:'tr'}}).from(el).save();toast('PDF сохранён')}
+const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-10000px;top:0';wrap.appendChild(el);document.body.appendChild(wrap);
+try{await html2pdf().set({margin:8,filename:`Оплата_${k.n}_${S.from}_${S.to}.pdf`,image:{type:'jpeg',quality:.98},html2canvas:{scale:2,scrollX:0,scrollY:0,backgroundColor:'#ffffff'},jsPDF:{unit:'mm',format:'a4'},pagebreak:{avoid:'tr'}}).from(el).save();toast('PDF сохранён')}
 catch(e){toast('Не удалось создать PDF: '+((e&&e.message)||e))}finally{wrap.remove()}}
 
 /* ===== карточка ученика ===== */
